@@ -33,28 +33,35 @@ def index():
 
 def generate_llm_response(emotion):
     """Calls the Gemini LLM for an emotional, contextual response."""
+    
+    # Fallback if Gemini client failed to initialize
     if not client:
         return "Sorry, the AI is offline right now. I'm listening, though."
     
-    # 1. Detailed Prompt based on Emotion and Role
-    prompt = f"""
-    Act as 'Kai', a highly compassionate, serene, and wise AI mental wellness companion. 
-    The user is currently displaying the primary emotion: '{emotion.upper()}'.
-    Your response must be extremely brief (max 2 sentences), empathetic, and encourage the user to share more. 
-    Do not use complex jargon. Adopt a calm and gentle tone.
-    """
-    
+    # Custom prompt based on emotion for a compassionate companion
+    if emotion == 'neutral':
+        # Added a non-committal response to prevent "SCANNING..." freeze
+        prompt_text = "You seem composed. I'm here, listening closely. What's on your mind today?"
+    else:
+        prompt_text = f"""
+        Act as 'Kai', a highly compassionate, serene, and wise AI mental wellness companion. 
+        The user is currently displaying the primary emotion: '{emotion.upper()}'.
+        Your response must be extremely brief (max 2 sentences), empathetic, and encourage the user to share more. 
+        Do not use complex jargon. Adopt a calm and gentle tone.
+        """
+        
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=[prompt],
+            contents=[prompt_text],
             config={"temperature": 0.7}
         )
         return response.text
     except APIError as e:
         print(f"Gemini API Error: {e}")
-        return "I'm having a technical issue, but I still want to hear what's on your mind."
+        return "I'm having a technical issue with my voice system, but I still want to hear what's on your mind."
     except Exception as e:
+        # Generic error fallback
         return "I'm here for you."
 
 
@@ -77,19 +84,17 @@ def generate_tts_audio(text, emotion):
 def handle_frame(data_url):
     emotion = analyze_emotion_from_frame(data_url)
     
+    # FIX: Respond on successful detection, even if 'neutral', to prevent 'SCANNING...' freeze.
     if emotion:
-        # Only respond if the emotion is stable and requires a response
-        if emotion != 'neutral':
             
-            # 1. Generate Intelligent Text from Gemini
-            llm_text = generate_llm_response(emotion)
-            
-            # 2. Generate Audio from the LLM Text
-            audio_url = generate_tts_audio(llm_text, emotion)
-            
-            if audio_url:
-                # 3. Emit data to frontend
-                emit('ai_response', {'emotion': emotion, 'audio_url': audio_url})
+        # 1. Generate Intelligent Text from Gemini (handles neutral/offline fallback)
+        llm_text = generate_llm_response(emotion)
+        
+        # 2. Generate Audio from the LLM Text
+        audio_url = generate_tts_audio(llm_text, emotion)
+        
+        # 3. Emit data to frontend (always sends the latest emotion, even if audio generation fails)
+        emit('ai_response', {'emotion': emotion, 'audio_url': audio_url})
 
 if __name__ == '__main__':
     print("Starting Kai Server (with Gemini Integration)...")

@@ -16,21 +16,22 @@
             <div class="header-text-large">Kai</div>
         </div>
 
-        <div id="ai-video-box" class="video-primary">
-            <img src="{{ url_for('static', filename='assets/avatar.png') }}" class="avatar-img" alt="Kai Avatar">
-            <div class="label ai-label">Kai (AI)</div>
-            
-            <div id="user-video-box" class="video-secondary movable-pi-p">
-                <video id="userVideo" autoplay muted playsinline></video>
-                <div id="emotionTag">SCANNING...</div>
-                <div class="label user-label">You</div>
-            </div>
-            
-            <div class="controls-bar">
-                <button class="control-btn"><i class="fas fa-microphone"></i></button>
-                <button class="control-btn"><i class="fas fa-video"></i></button>
-                <button class="control-btn hangup" onclick="window.close()"><i class="fas fa-phone-slash"></i></button>
-            </div>
+        <div id="kai-video-container" class="video-container primary-view">
+            <img id="kaiAvatar" src="{{ url_for('static', filename='assets/avatar.png') }}" class="avatar-img" alt="Kai Avatar">
+            <div class="label kai-label">Kai (AI)</div>
+        </div>
+
+        <div id="user-video-container" class="video-container secondary-pip movable-pip">
+            <video id="userVideo" autoplay muted playsinline></video>
+            <div id="emotionTag">SCANNING...</div>
+            <div class="label user-label">You</div>
+            <button id="toggleViewBtn" class="toggle-view-btn" title="Toggle View"><i class="fas fa-expand-alt"></i></button>
+        </div>
+        
+        <div class="controls-bar">
+            <button class="control-btn"><i class="fas fa-microphone"></i></button>
+            <button class="control-btn"><i class="fas fa-video"></i></button>
+            <button class="control-btn hangup" onclick="window.close()"><i class="fas fa-phone-slash"></i></button>
         </div>
 
     </div>

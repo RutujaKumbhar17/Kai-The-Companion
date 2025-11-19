@@ -1,16 +1,18 @@
 :root {
-    /* FINAL PROFESSIONAL COLORS */
-    --primary-color: #34A89A; /* Deep Teal/Cyan Accent */
-    --secondary-color: #1D2B53; /* Deep Indigo/Navy (Background) */
-    --header-bg: #F0F8FF; /* Clean White/Cream Header */
-    --control-bg: rgba(44, 62, 80, 0.85); 
-    --card-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    --light-text: #EEEEEE;
-    --dark-text: #1a1a1a;
+    /* WhatsApp Inspired Colors */
+    --primary-color: #008069; /* WhatsApp Green/Teal */
+    --secondary-color: #1a1a1a; /* Dark background */
+    --header-bg: rgba(0, 0, 0, 0.4); /* Transparent dark header */
+    --control-bg: rgba(25, 25, 25, 0.85); /* Slightly darker control bar */
+    --card-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    --light-text: #FFFFFF;
+    --dark-text: #E0E0E0;
+    --pip-size-width: 250px;
+    --pip-size-height: 180px;
 }
 
 body {
-    background: var(--secondary-color); /* Deep Indigo Background */
+    background: var(--secondary-color); 
     color: var(--dark-text);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
@@ -22,106 +24,85 @@ body {
 }
 
 .main-screen {
-    /* Main container uses flex-column to stack Header, Video, and Controls */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 90vw;
-    max-width: 1400px;
-    height: 95vh; 
     position: relative;
+    width: 100vw;
+    height: 100vh; 
+    max-width: none; 
     padding: 0;
     margin: 0;
+    overflow: hidden;
 }
 
-/* --- NEW HEADER PANEL (Structural Fix) --- */
+/* --- HEADER PANEL (Subtle, Overlay) --- */
 .header-panel {
     position: absolute;
-    top: 15px; 
-    width: 100%; /* Matches video primary width */
-    height: 60px;
-    background: var(--header-bg); 
-    color: var(--secondary-color); 
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 70px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0)); /* Gradient Fade */
+    color: var(--light-text); 
     padding: 0 40px;
-    z-index: 15;
+    z-index: 1000;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    justify-content: center;
+    box-shadow: none;
 }
 
 .header-text-large {
     font-size: 1.8rem;
     font-weight: 700;
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    color: var(--secondary-color); 
+    color: var(--light-text);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .header-text-small {
     font-size: 0.9rem;
-    opacity: 0.9;
+    opacity: 0.8;
     position: absolute; 
     left: 20px;
-    color: var(--secondary-color);
+    color: var(--light-text);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* --- PRIMARY (AI Avatar) Window (90% Size & Below Header) --- */
-.video-primary {
-    flex-grow: 1; 
-    width: 100%; /* Fills the width of the main-screen */
-    background: #000; 
+/* --- VIDEO CONTAINERS BASE STYLES --- */
+.video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother animation curve */
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
-    position: relative;
-    
-    /* Border Fix */
-    border: 10px solid var(--primary-color); 
-    border-top: none; 
-    
-    box-sizing: border-box; 
-    z-index: 5; 
-    
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    box-sizing: border-box;
+    background: #000;
 }
 
-.avatar-img {
+/* --- PRIMARY (FULL SCREEN) VIEW --- */
+.primary-view {
+    z-index: 5;
+    border-radius: 0;
+}
+
+.primary-view .avatar-img,
+.primary-view video {
     width: 100%;
     height: 100%;
-    object-fit: cover; 
-    max-width: 100%;
-    max-height: 100%;
-    opacity: 1; 
+    object-fit: cover;
 }
 
-.label {
-    position: absolute;
-    bottom: 15px;
-    left: 15px;
-    background: var(--primary-color); 
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    color: var(--light-text);
-}
-
-/* --- SECONDARY (User Video) PiP Box --- */
-.video-secondary {
-    width: 180px; 
-    height: 120px;
+/* --- SECONDARY (PICTURE-IN-PICTURE) VIEW --- */
+.secondary-pip {
+    width: var(--pip-size-width); 
+    height: var(--pip-size-height);
     background: #202020;
     border-radius: 12px;
     position: absolute; 
-    bottom: 30px; 
+    bottom: 100px; /* Moved up to avoid controls bar */
     right: 30px; 
     top: auto; 
     left: auto; 
@@ -130,71 +111,106 @@ body {
     box-shadow: var(--card-shadow);
     z-index: 100; 
     cursor: grab; 
-    transition: none; 
+    transform: none !important; 
 }
-/* ... rest of the CSS (controls, animations) remains the same ... */
 
-video {
+.movable-pip {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.secondary-pip video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transform: scaleX(-1);
 }
 
+/* NEW RULE: HIDE KAI's IMAGE WHEN IN PiP MODE */
+.secondary-pip #kaiAvatar { 
+    display: none;
+}
+
+/* NEW RULE: SHOW KAI's AVATAR WHEN IN PRIMARY MODE */
+.primary-view #kaiAvatar {
+    display: block;
+}
+
+/* --- UI Elements (Labels, Emotion Tag, Toggle Button) --- */
+.label {
+    position: absolute;
+    bottom: 5px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5); 
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: var(--light-text);
+    z-index: 110;
+}
+
 #emotionTag {
     position: absolute;
     top: 5px;
     right: 5px;
-    padding: 5px 10px;
-    border-radius: 10px;
+    padding: 3px 8px;
+    border-radius: 8px;
     font-weight: bold;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: var(--light-text);
     background: var(--primary-color);
+    z-index: 110;
 }
 
-/* --- Controls Bar (Positioned inside Video Panel) --- */
-.controls-bar {
+.toggle-view-btn {
     position: absolute;
-    bottom: 30px;
+    top: 5px;
+    left: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--light-text);
+    font-size: 0.8rem;
+    cursor: pointer;
+    z-index: 110;
+    transition: background 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.toggle-view-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* --- Controls Bar (WhatsApp style) --- */
+.controls-bar {
+    position: fixed; 
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 20px;
-    background: var(--control-bg);
-    padding: 15px 30px;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.4); /* Subtle transparent background */
+    padding: 10px 15px;
     border-radius: 50px;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
-    z-index: 20;
-}
-
-/* ... (rest of the control button CSS is the same) ... */
-/* --- Controls Bar (3D Look) --- */
-.controls-bar {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 20px;
-    background: var(--control-bg);
-    padding: 15px 30px;
-    border-radius: 50px;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
-    z-index: 20;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    z-index: 1000;
 }
 
 .control-btn {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     cursor: pointer;
     color: var(--light-text);
     
-    background: #4a4a4a;
-    box-shadow: 0 5px 0 #2c2c2c; 
+    background: #4a4a4a; /* Dark gray for general buttons */
+    box-shadow: 0 3px 0 #2c2c2c; 
     transition: all 0.1s ease;
 }
 
@@ -204,23 +220,24 @@ video {
 
 .control-btn:active {
     box-shadow: 0 1px 0 #2c2c2c;
-    transform: translateY(4px); 
+    transform: translateY(2px); 
 }
 
 .control-btn.hangup {
-    background: #e74c3c; 
-    box-shadow: 0 5px 0 #b3362d;
+    background: #e74c3c; /* Red for hangup */
+    box-shadow: 0 3px 0 #b3362d;
 }
 .control-btn.hangup:active {
     box-shadow: 0 1px 0 #b3362d;
 }
 
+/* --- SPEAKING ANIMATION --- */
 @keyframes speakingPulse {
     0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.01); opacity: 1; }
+    50% { transform: scale(1.005); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
 }
 
-.video-primary.is-speaking .avatar-img {
-    animation: speakingPulse 0.5s infinite alternate;
+.primary-view.is-speaking #kaiAvatar {
+    animation: speakingPulse 0.4s infinite alternate;
 }
