@@ -17,7 +17,11 @@ def analyze_emotion_from_frame(data_url):
         # Setting enforce_detection=False prevents crashing if the face is not fully visible
         result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
         
-        return result[0]['dominant_emotion']
+        # FIX: Check if the result is a non-empty list before accessing the element
+        if isinstance(result, list) and result:
+            return result[0]['dominant_emotion']
+        
+        return None # Return None if DeepFace runs but doesn't find a face
         
     except Exception as e:
         # Pass silently if no face is detected or if an error occurs

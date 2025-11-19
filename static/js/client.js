@@ -1,64 +1,49 @@
 const socket = io();
 
-// Get the new container elements
+// Containers
 const kaiContainer = document.getElementById('kai-video-container');
 const userContainer = document.getElementById('user-video-container');
 
 const videoElement = document.getElementById('userVideo');
 const emotionTag = document.getElementById('emotionTag');
-const toggleViewBtn = document.getElementById('toggleViewBtn');
 
 // --- GLOBAL STATE ---
 let isSpeaking = false;
 let isDragging = false;
+let activePip = null; // Reference to the currently draggable element (User or Kai)
 let dragOffsetX, dragOffsetY;
 
-// --- TOGGLE LOGIC: Swaps the primary (full-screen) and secondary (PiP) views ---
+// --- TOGGLE LOGIC (Double Click) ---
 function toggleVideoLayout() {
     // Determine the current state based on Kai's class
     const kaiIsPrimary = kaiContainer.classList.contains('primary-view');
     
     if (kaiIsPrimary) {
-        // Switch to User Primary (Full) / Kai Secondary (PiP)
+        // SWITCH: Kai Primary -> User Primary (Full) / Kai Secondary (PiP)
         
-        // 1. Swap Kai to Secondary (PiP)
+        // 1. Kai becomes PiP
         kaiContainer.classList.remove('primary-view');
         kaiContainer.classList.add('secondary-pip');
         
-        // 2. Swap User to Primary (Full) - Disable movement when full-screen
+        // 2. User becomes Full Screen
         userContainer.classList.remove('secondary-pip');
         userContainer.classList.remove('movable-pip'); 
         userContainer.classList.add('primary-view');
         
-        // --- FIX START ---
-        // Ensure the toggle button remains absolutely positioned and clickable 
-        // even when the User container is full-screen.
-        toggleViewBtn.style.position = 'absolute';
-        toggleViewBtn.style.zIndex = '1000'; 
-        toggleViewBtn.style.left = '10px';
-        toggleViewBtn.style.top = '10px';
-        // --- FIX END ---
-
-        // 3. Update button icon
-        toggleViewBtn.innerHTML = '<i class="fas fa-compress-alt"></i>';
-        
     } else {
-        // SWITCH 2: User Primary -> Kai Primary / User Secondary (PiP)
+        // SWITCH: User Primary -> Kai Primary (Full) / User Secondary (PiP)
         
-        // 1. Swap Kai back to Primary (Full)
+        // 1. Kai becomes Full Screen
         kaiContainer.classList.remove('secondary-pip');
         kaiContainer.classList.add('primary-view');
         
-        // 2. Swap User back to Secondary (PiP) - Re-enable movement
+        // 2. User becomes PiP
         userContainer.classList.remove('primary-view');
         userContainer.classList.add('secondary-pip');
         userContainer.classList.add('movable-pip');
-        
-        // 3. Update button icon
-        toggleViewBtn.innerHTML = '<i class="fas fa-expand-alt"></i>';
     }
     
-    // Reset any inline positioning set by the drag function to default PiP position
+    // RESET POSITIONS: Ensure the new PiP snaps to the default corner
     kaiContainer.style.left = '';
     kaiContainer.style.top = '';
     kaiContainer.style.right = '30px';
@@ -70,66 +55,79 @@ function toggleVideoLayout() {
     userContainer.style.bottom = '100px';
 }
 
-toggleViewBtn.addEventListener('click', toggleVideoLayout);
+// Attach Double Click to BOTH containers so you can toggle from anywhere
+kaiContainer.addEventListener('dblclick', toggleVideoLayout);
+userContainer.addEventListener('dblclick', toggleVideoLayout);
 
 
-// --- DRAG LOGIC (Updated to only allow drag in PiP mode) ---
+// --- GENERIC DRAG LOGIC (Works for whichever window is PiP) ---
 function startDragging(e) {
-    // Only allow dragging if the user container is the PiP (secondary-pip) AND not clicking the toggle button
-    if (!userContainer.classList.contains('secondary-pip') || isSpeaking || e.target.closest('#toggleViewBtn')) {
-        return; 
+    // Determine which container was clicked
+    const targetContainer = e.currentTarget;
+
+    // VALIDATION:
+    // 1. Can only drag the element that currently has the 'secondary-pip' class
+    // 2. Cannot drag if Kai is speaking (prevents jitter)
+    if (!targetContainer.classList.contains('secondary-pip') || isSpeaking) {
+        return;
     }
-    
+
     isDragging = true;
-    userContainer.style.cursor = 'grabbing';
+    activePip = targetContainer; // Set the active draggable element
     
-    const piPRect = userContainer.getBoundingClientRect();
-    dragOffsetX = e.clientX - piPRect.left;
-    dragOffsetY = e.clientY - piPRect.top;
-    
-    // Must remove CSS transitions for smooth dragging
-    userContainer.style.transition = 'none'; 
-    // Ensure absolute positioning is explicit and override default positioning
-    userContainer.style.position = 'absolute';
-    userContainer.style.right = 'auto'; 
-    userContainer.style.bottom = 'auto'; 
+    activePip.style.cursor = 'grabbing';
+    activePip.style.transition = 'none'; // Disable transition for smooth direct movement
+
+    // Calculate offset relative to the specific container being dragged
+    const rect = activePip.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+
+    // Switch to absolute positioning logic
+    activePip.style.position = 'absolute';
+    activePip.style.right = 'auto';
+    activePip.style.bottom = 'auto';
 
     document.addEventListener('mousemove', handleDragging);
     document.addEventListener('mouseup', stopDragging);
 }
 
 function handleDragging(e) {
-    if (!isDragging) return;
+    if (!isDragging || !activePip) return;
 
     const bounds = document.body.getBoundingClientRect();
-    const piPWidth = userContainer.offsetWidth;
-    const piPHeight = userContainer.offsetHeight;
+    const elWidth = activePip.offsetWidth;
+    const elHeight = activePip.offsetHeight;
 
     let newLeft = e.clientX - dragOffsetX;
     let newTop = e.clientY - dragOffsetY;
 
-    // Boundary limits
+    // Boundary Checks (Keep window inside screen)
     if (newLeft < 0) newLeft = 0;
     if (newTop < 0) newTop = 0;
-    if (newLeft + piPWidth > bounds.width) newLeft = bounds.width - piPWidth;
-    if (newTop + piPHeight > bounds.height) newTop = bounds.height - piPHeight;
+    if (newLeft + elWidth > bounds.width) newLeft = bounds.width - elWidth;
+    if (newTop + elHeight > bounds.height) newTop = bounds.height - elHeight;
 
-
-    // Apply new position
-    userContainer.style.left = newLeft + 'px';
-    userContainer.style.top = newTop + 'px';
+    activePip.style.left = newLeft + 'px';
+    activePip.style.top = newTop + 'px';
 }
 
 function stopDragging() {
+    if (activePip) {
+        activePip.style.cursor = 'grab';
+        // Re-enable smooth transitions for future toggles
+        activePip.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+    
     isDragging = false;
-    userContainer.style.cursor = 'grab';
+    activePip = null; // Clear active reference
+    
     document.removeEventListener('mousemove', handleDragging);
     document.removeEventListener('mouseup', stopDragging);
-    
-    // Re-enable CSS transition after drag is finished (for future swaps/resets)
-    userContainer.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
 }
 
+// Attach Drag Listeners to BOTH containers
+kaiContainer.addEventListener('mousedown', startDragging);
 userContainer.addEventListener('mousedown', startDragging);
 
 
@@ -140,7 +138,6 @@ function playAudioResponse(url, emotion) {
 
     isSpeaking = true;
     const audio = new Audio(url);
-    // Use the Kai container for the speaking class
     kaiContainer.classList.add('is-speaking'); 
     
     audio.play();
@@ -164,7 +161,6 @@ async function startCamera() {
 }
 
 function sendFrameToBackend() {
-    // Only send frames if Kai is not speaking AND the user is not dragging
     if (isSpeaking || isDragging) {
         return; 
     }
@@ -181,10 +177,9 @@ function sendFrameToBackend() {
 socket.on('ai_response', (data) => {
     emotionTag.innerText = data.emotion.toUpperCase();
     
-    // Set emotion tag background color to match the new theme
     if (data.emotion === 'happy') emotionTag.style.backgroundColor = '#2ecc71'; 
     else if (data.emotion === 'sad') emotionTag.style.backgroundColor = '#3498db'; 
-    else if (data.emotion === 'neutral') emotionTag.style.backgroundColor = '#5a5a5a'; // Dark gray for neutral
+    else if (data.emotion === 'neutral') emotionTag.style.backgroundColor = '#5a5a5a';
     else if (data.emotion === 'angry') emotionTag.style.backgroundColor = '#f39c12';
     else emotionTag.style.backgroundColor = '#9b59b6';
     
