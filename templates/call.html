@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kai Video Companion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="main-screen">
+        
+        <div class="header-panel">
+            <div class="header-text-small">Video Calling</div>
+            <div class="header-text-large">Kai</div>
+        </div>
+
+        <div id="ai-video-box" class="video-primary">
+            <img src="{{ url_for('static', filename='assets/avatar.png') }}" class="avatar-img" alt="Kai Avatar">
+            <div class="label ai-label">Kai (AI)</div>
+            
+            <div id="user-video-box" class="video-secondary movable-pi-p">
+                <video id="userVideo" autoplay muted playsinline></video>
+                <div id="emotionTag">SCANNING...</div>
+                <div class="label user-label">You</div>
+            </div>
+            
+            <div class="controls-bar">
+                <button class="control-btn"><i class="fas fa-microphone"></i></button>
+                <button class="control-btn"><i class="fas fa-video"></i></button>
+                <button class="control-btn hangup" onclick="window.close()"><i class="fas fa-phone-slash"></i></button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='js/client.js') }}"></script>
+</body>
+</html>

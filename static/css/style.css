@@ -1,0 +1,226 @@
+:root {
+    /* FINAL PROFESSIONAL COLORS */
+    --primary-color: #34A89A; /* Deep Teal/Cyan Accent */
+    --secondary-color: #1D2B53; /* Deep Indigo/Navy (Background) */
+    --header-bg: #F0F8FF; /* Clean White/Cream Header */
+    --control-bg: rgba(44, 62, 80, 0.85); 
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    --light-text: #EEEEEE;
+    --dark-text: #1a1a1a;
+}
+
+body {
+    background: var(--secondary-color); /* Deep Indigo Background */
+    color: var(--dark-text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    height: 100vh;
+    overflow: hidden; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.main-screen {
+    /* Main container uses flex-column to stack Header, Video, and Controls */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 90vw;
+    max-width: 1400px;
+    height: 95vh; 
+    position: relative;
+    padding: 0;
+    margin: 0;
+}
+
+/* --- NEW HEADER PANEL (Structural Fix) --- */
+.header-panel {
+    position: absolute;
+    top: 15px; 
+    width: 100%; /* Matches video primary width */
+    height: 60px;
+    background: var(--header-bg); 
+    color: var(--secondary-color); 
+    padding: 0 40px;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.header-text-large {
+    font-size: 1.8rem;
+    font-weight: 700;
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    color: var(--secondary-color); 
+}
+
+.header-text-small {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    position: absolute; 
+    left: 20px;
+    color: var(--secondary-color);
+}
+
+/* --- PRIMARY (AI Avatar) Window (90% Size & Below Header) --- */
+.video-primary {
+    flex-grow: 1; 
+    width: 100%; /* Fills the width of the main-screen */
+    background: #000; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    
+    /* Border Fix */
+    border: 10px solid var(--primary-color); 
+    border-top: none; 
+    
+    box-sizing: border-box; 
+    z-index: 5; 
+    
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    max-width: 100%;
+    max-height: 100%;
+    opacity: 1; 
+}
+
+.label {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    background: var(--primary-color); 
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: var(--light-text);
+}
+
+/* --- SECONDARY (User Video) PiP Box --- */
+.video-secondary {
+    width: 180px; 
+    height: 120px;
+    background: #202020;
+    border-radius: 12px;
+    position: absolute; 
+    bottom: 30px; 
+    right: 30px; 
+    top: auto; 
+    left: auto; 
+    overflow: hidden;
+    border: 3px solid var(--primary-color); 
+    box-shadow: var(--card-shadow);
+    z-index: 100; 
+    cursor: grab; 
+    transition: none; 
+}
+/* ... rest of the CSS (controls, animations) remains the same ... */
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#emotionTag {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: var(--light-text);
+    background: var(--primary-color);
+}
+
+/* --- Controls Bar (Positioned inside Video Panel) --- */
+.controls-bar {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    background: var(--control-bg);
+    padding: 15px 30px;
+    border-radius: 50px;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+    z-index: 20;
+}
+
+/* ... (rest of the control button CSS is the same) ... */
+/* --- Controls Bar (3D Look) --- */
+.controls-bar {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    background: var(--control-bg);
+    padding: 15px 30px;
+    border-radius: 50px;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+    z-index: 20;
+}
+
+.control-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--light-text);
+    
+    background: #4a4a4a;
+    box-shadow: 0 5px 0 #2c2c2c; 
+    transition: all 0.1s ease;
+}
+
+.control-btn:hover {
+    background: #5a5a5a;
+}
+
+.control-btn:active {
+    box-shadow: 0 1px 0 #2c2c2c;
+    transform: translateY(4px); 
+}
+
+.control-btn.hangup {
+    background: #e74c3c; 
+    box-shadow: 0 5px 0 #b3362d;
+}
+.control-btn.hangup:active {
+    box-shadow: 0 1px 0 #b3362d;
+}
+
+@keyframes speakingPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.01); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.video-primary.is-speaking .avatar-img {
+    animation: speakingPulse 0.5s infinite alternate;
+}
