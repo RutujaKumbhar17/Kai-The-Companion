@@ -30,11 +30,20 @@ function toggleVideoLayout() {
         userContainer.classList.remove('movable-pip'); 
         userContainer.classList.add('primary-view');
         
+        // --- FIX START ---
+        // Ensure the toggle button remains absolutely positioned and clickable 
+        // even when the User container is full-screen.
+        toggleViewBtn.style.position = 'absolute';
+        toggleViewBtn.style.zIndex = '1000'; 
+        toggleViewBtn.style.left = '10px';
+        toggleViewBtn.style.top = '10px';
+        // --- FIX END ---
+
         // 3. Update button icon
         toggleViewBtn.innerHTML = '<i class="fas fa-compress-alt"></i>';
         
     } else {
-        // Switch back to Kai Primary (Full) / User Secondary (PiP)
+        // SWITCH 2: User Primary -> Kai Primary / User Secondary (PiP)
         
         // 1. Swap Kai back to Primary (Full)
         kaiContainer.classList.remove('secondary-pip');
@@ -50,7 +59,6 @@ function toggleVideoLayout() {
     }
     
     // Reset any inline positioning set by the drag function to default PiP position
-    // This is important for smooth transition back to default layout
     kaiContainer.style.left = '';
     kaiContainer.style.top = '';
     kaiContainer.style.right = '30px';

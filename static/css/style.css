@@ -126,9 +126,9 @@ body {
 }
 
 /* NEW RULE: HIDE KAI's IMAGE WHEN IN PiP MODE */
-.secondary-pip #kaiAvatar { 
+/* .secondary-pip #kaiAvatar { 
     display: none;
-}
+}*/
 
 /* NEW RULE: SHOW KAI's AVATAR WHEN IN PRIMARY MODE */
 .primary-view #kaiAvatar {
