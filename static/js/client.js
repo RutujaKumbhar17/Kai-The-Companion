@@ -1,8 +1,9 @@
 import { TalkingHead } from "talkinghead";
 
 // --- CONFIGURATION ---
-// YOUR NEW AVATAR URL (With ARKit suffix added for lip-sync)
-const MY_AVATAR_URL = "https://models.readyplayer.me/6924973a1aa3af821a843170.glb";
+// FIX 1: Added 'morphTargets=ARKit' (REQUIRED for lip-sync/animation)
+// FIX 2: Added 'textureAtlas=1024' to optimize download size
+const MY_AVATAR_URL = "https://models.readyplayer.me/6924973a1aa3af821a843170.glb?morphTargets=ARKit&textureAtlas=1024";
 
 // --- GLOBAL STATE ---
 const socket = io();
@@ -23,46 +24,55 @@ const avatarNode = document.getElementById('avatar-container');
 async function initAvatar() {
     console.log("Initializing Avatar...");
     
-    // Loading Text
-    avatarNode.innerHTML = "<h2 style='color:white; text-align:center; padding-top:20%;'>Loading Kai...<br><span style='font-size:12px'>Please wait...</span></h2>";
+    // Loading Text with ID for easy removal
+    avatarNode.innerHTML = `
+        <div id="loading-overlay" style="text-align:center; padding-top:20%;">
+            <h2 style="color:white;">Loading Kai...</h2>
+            <div id="loading-status" style="color:#ccc; font-size:14px; margin-top:10px;">Connecting...</div>
+        </div>`;
+    
+    const statusText = document.getElementById('loading-status');
+    const loadingOverlay = document.getElementById('loading-overlay');
 
     try {
-        // 2. Initialize Engine
+        // Initialize Engine
         head = new TalkingHead(avatarNode, {
-            // FIX: This dummy URL prevents the "Google-compliant TTS" error crash
             ttsEndpoint: "https://eu-texttospeech.googleapis.com/v1beta1/text:synthesize", 
-            
-            cameraView: "upper", // Sitting view (Head & Shoulders)
+            cameraView: "upper", 
             cameraDistance: 1.6,
             ambientLightIntensity: 1.0,
             cameraRotateEnable: false 
         });
 
-        console.log("Engine started. Downloading model...");
+        statusText.innerText = "Downloading Model...";
 
-        // 3. Load Your Specific Model
+        // Load Model
         await head.showAvatar({
             url: MY_AVATAR_URL,
-            body: 'F', // Feminine (Matches your avatar)
+            body: 'F',
             avatarMood: 'neutral', 
             lipsyncLang: 'en' 
+        }, (progress) => {
+            // FIX 3: Progress Callback to see real-time download status
+            if (progress.lengthComputable) {
+                const percent = Math.round((progress.loaded / progress.total) * 100);
+                statusText.innerText = `Downloading: ${percent}%`;
+            }
         });
 
         console.log("Avatar Loaded Successfully!");
         
-        // Remove loading text and set state
+        // FIX 4: Explicitly remove the loading text now that the avatar is ready
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // Set state
         head.setMood('neutral'); 
 
     } catch (error) {
         console.error("AVATAR ERROR:", error);
-        
-        // Visual Error Handler
-        alert("Avatar Failed to Load!\n\nReason: " + error.message);
-        avatarNode.innerHTML = `
-            <div style='color:red; text-align:center; padding-top:20%;'>
-                <h2>⚠️ Error Loading Kai</h2>
-                <p>${error.message}</p>
-            </div>`;
+        statusText.innerHTML = `<span style="color:red">Error: ${error.message}</span>`;
+        // Suggest checking console if it's a CORS/Network error
+        alert("Could not load Avatar. Check console (F12) for details.");
     }
 }
 
@@ -70,7 +80,7 @@ async function initAvatar() {
 initAvatar();
 
 
-// --- 2. LAYOUT & DRAG LOGIC (Standard) ---
+// --- 2. LAYOUT & DRAG LOGIC ---
 function toggleVideoLayout() {
     const kaiIsPrimary = kaiContainer.classList.contains('primary-view');
     if (kaiIsPrimary) {
@@ -133,14 +143,13 @@ kaiContainer.addEventListener('mousedown', startDragging);
 userContainer.addEventListener('mousedown', startDragging);
 
 
-// --- 3. CORE LOGIC (With Lip Sync) ---
+// --- 3. CORE LOGIC ---
 function playAudioResponse(url, emotion) {
     if (isSpeaking || !head) return;
     isSpeaking = true;
     kaiContainer.classList.add('is-speaking'); 
     emotionTag.innerText = emotion.toUpperCase();
     
-    // Speak using the downloaded audio buffer (Lip-syncs automatically)
     head.speakAudio(url, { 
         audio: { 
             onended: () => {
