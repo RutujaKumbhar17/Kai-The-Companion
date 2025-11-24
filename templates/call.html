@@ -4,8 +4,20 @@
     <meta charset="UTF-8">
     <title>Kai Video Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.1/modules/talkinghead.mjs"
+        }
+    }
+    </script>
 </head>
 <body>
 
@@ -17,7 +29,8 @@
         </div>
 
         <div id="kai-video-container" class="video-container primary-view">
-            <img id="kaiAvatar" src="{{ url_for('static', filename='assets/avatar.png') }}" class="avatar-img" alt="Kai Avatar">
+            <div id="avatar-container"></div> 
+            
             <div class="label kai-label">Kai (AI)</div>
         </div>
 
@@ -25,7 +38,7 @@
             <video id="userVideo" autoplay muted playsinline></video>
             <div id="emotionTag">SCANNING...</div>
             <div class="label user-label">You</div>
-            </div>
+        </div>
         
         <div class="controls-bar">
             <button class="control-btn"><i class="fas fa-microphone"></i></button>
@@ -35,6 +48,6 @@
 
     </div>
 
-    <script src="{{ url_for('static', filename='js/client.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/client.js') }}"></script>
 </body>
 </html>

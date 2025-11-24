@@ -1,153 +1,156 @@
-const socket = io();
+import { TalkingHead } from "talkinghead";
 
-// Containers
-const kaiContainer = document.getElementById('kai-video-container');
-const userContainer = document.getElementById('user-video-container');
-
-const videoElement = document.getElementById('userVideo');
-const emotionTag = document.getElementById('emotionTag');
+// --- CONFIGURATION ---
+// YOUR NEW AVATAR URL (With ARKit suffix added for lip-sync)
+const MY_AVATAR_URL = "https://models.readyplayer.me/6924973a1aa3af821a843170.glb";
 
 // --- GLOBAL STATE ---
+const socket = io();
+let head; 
 let isSpeaking = false;
 let isDragging = false;
-let activePip = null; // Reference to the currently draggable element (User or Kai)
+let activePip = null; 
 let dragOffsetX, dragOffsetY;
 
-// --- TOGGLE LOGIC (Double Click) ---
-function toggleVideoLayout() {
-    // Determine the current state based on Kai's class
-    const kaiIsPrimary = kaiContainer.classList.contains('primary-view');
-    
-    if (kaiIsPrimary) {
-        // SWITCH: Kai Primary -> User Primary (Full) / Kai Secondary (PiP)
-        
-        // 1. Kai becomes PiP
-        kaiContainer.classList.remove('primary-view');
-        kaiContainer.classList.add('secondary-pip');
-        
-        // 2. User becomes Full Screen
-        userContainer.classList.remove('secondary-pip');
-        userContainer.classList.remove('movable-pip'); 
-        userContainer.classList.add('primary-view');
-        
-    } else {
-        // SWITCH: User Primary -> Kai Primary (Full) / User Secondary (PiP)
-        
-        // 1. Kai becomes Full Screen
-        kaiContainer.classList.remove('secondary-pip');
-        kaiContainer.classList.add('primary-view');
-        
-        // 2. User becomes PiP
-        userContainer.classList.remove('primary-view');
-        userContainer.classList.add('secondary-pip');
-        userContainer.classList.add('movable-pip');
-    }
-    
-    // RESET POSITIONS: Ensure the new PiP snaps to the default corner
-    kaiContainer.style.left = '';
-    kaiContainer.style.top = '';
-    kaiContainer.style.right = '30px';
-    kaiContainer.style.bottom = '100px';
+// DOM Elements
+const kaiContainer = document.getElementById('kai-video-container');
+const userContainer = document.getElementById('user-video-container');
+const videoElement = document.getElementById('userVideo');
+const emotionTag = document.getElementById('emotionTag');
+const avatarNode = document.getElementById('avatar-container');
 
-    userContainer.style.left = '';
-    userContainer.style.top = '';
-    userContainer.style.right = '30px';
-    userContainer.style.bottom = '100px';
+// --- 1. INITIALIZE THE 3D AVATAR ---
+async function initAvatar() {
+    console.log("Initializing Avatar...");
+    
+    // Loading Text
+    avatarNode.innerHTML = "<h2 style='color:white; text-align:center; padding-top:20%;'>Loading Kai...<br><span style='font-size:12px'>Please wait...</span></h2>";
+
+    try {
+        // 2. Initialize Engine
+        head = new TalkingHead(avatarNode, {
+            // FIX: This dummy URL prevents the "Google-compliant TTS" error crash
+            ttsEndpoint: "https://eu-texttospeech.googleapis.com/v1beta1/text:synthesize", 
+            
+            cameraView: "upper", // Sitting view (Head & Shoulders)
+            cameraDistance: 1.6,
+            ambientLightIntensity: 1.0,
+            cameraRotateEnable: false 
+        });
+
+        console.log("Engine started. Downloading model...");
+
+        // 3. Load Your Specific Model
+        await head.showAvatar({
+            url: MY_AVATAR_URL,
+            body: 'F', // Feminine (Matches your avatar)
+            avatarMood: 'neutral', 
+            lipsyncLang: 'en' 
+        });
+
+        console.log("Avatar Loaded Successfully!");
+        
+        // Remove loading text and set state
+        head.setMood('neutral'); 
+
+    } catch (error) {
+        console.error("AVATAR ERROR:", error);
+        
+        // Visual Error Handler
+        alert("Avatar Failed to Load!\n\nReason: " + error.message);
+        avatarNode.innerHTML = `
+            <div style='color:red; text-align:center; padding-top:20%;'>
+                <h2>⚠️ Error Loading Kai</h2>
+                <p>${error.message}</p>
+            </div>`;
+    }
 }
 
-// Attach Double Click to BOTH containers so you can toggle from anywhere
+// Start loading
+initAvatar();
+
+
+// --- 2. LAYOUT & DRAG LOGIC (Standard) ---
+function toggleVideoLayout() {
+    const kaiIsPrimary = kaiContainer.classList.contains('primary-view');
+    if (kaiIsPrimary) {
+        kaiContainer.classList.replace('primary-view', 'secondary-pip');
+        userContainer.classList.replace('secondary-pip', 'primary-view');
+        userContainer.classList.remove('movable-pip'); 
+    } else {
+        kaiContainer.classList.replace('secondary-pip', 'primary-view');
+        userContainer.classList.replace('primary-view', 'secondary-pip');
+        userContainer.classList.add('movable-pip');
+    }
+    // Reset positions
+    [kaiContainer, userContainer].forEach(el => {
+        el.style.left = ''; el.style.top = ''; 
+        el.style.right = '30px'; el.style.bottom = '100px';
+    });
+}
 kaiContainer.addEventListener('dblclick', toggleVideoLayout);
 userContainer.addEventListener('dblclick', toggleVideoLayout);
 
-
-// --- GENERIC DRAG LOGIC (Works for whichever window is PiP) ---
 function startDragging(e) {
-    // Determine which container was clicked
     const targetContainer = e.currentTarget;
-
-    // VALIDATION:
-    // 1. Can only drag the element that currently has the 'secondary-pip' class
-    // 2. Cannot drag if Kai is speaking (prevents jitter)
-    if (!targetContainer.classList.contains('secondary-pip') || isSpeaking) {
-        return;
-    }
-
+    if (!targetContainer.classList.contains('secondary-pip')) return;
     isDragging = true;
-    activePip = targetContainer; // Set the active draggable element
-    
+    activePip = targetContainer;
     activePip.style.cursor = 'grabbing';
-    activePip.style.transition = 'none'; // Disable transition for smooth direct movement
-
-    // Calculate offset relative to the specific container being dragged
+    activePip.style.transition = 'none';
     const rect = activePip.getBoundingClientRect();
     dragOffsetX = e.clientX - rect.left;
     dragOffsetY = e.clientY - rect.top;
-
-    // Switch to absolute positioning logic
     activePip.style.position = 'absolute';
     activePip.style.right = 'auto';
     activePip.style.bottom = 'auto';
-
     document.addEventListener('mousemove', handleDragging);
     document.addEventListener('mouseup', stopDragging);
 }
-
 function handleDragging(e) {
     if (!isDragging || !activePip) return;
-
     const bounds = document.body.getBoundingClientRect();
-    const elWidth = activePip.offsetWidth;
-    const elHeight = activePip.offsetHeight;
-
     let newLeft = e.clientX - dragOffsetX;
     let newTop = e.clientY - dragOffsetY;
-
-    // Boundary Checks (Keep window inside screen)
     if (newLeft < 0) newLeft = 0;
     if (newTop < 0) newTop = 0;
-    if (newLeft + elWidth > bounds.width) newLeft = bounds.width - elWidth;
-    if (newTop + elHeight > bounds.height) newTop = bounds.height - elHeight;
-
+    if (newLeft + activePip.offsetWidth > bounds.width) newLeft = bounds.width - activePip.offsetWidth;
+    if (newTop + activePip.offsetHeight > bounds.height) newTop = bounds.height - activePip.offsetHeight;
     activePip.style.left = newLeft + 'px';
     activePip.style.top = newTop + 'px';
 }
-
 function stopDragging() {
     if (activePip) {
         activePip.style.cursor = 'grab';
-        // Re-enable smooth transitions for future toggles
         activePip.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
     }
-    
     isDragging = false;
-    activePip = null; // Clear active reference
-    
+    activePip = null;
     document.removeEventListener('mousemove', handleDragging);
     document.removeEventListener('mouseup', stopDragging);
 }
-
-// Attach Drag Listeners to BOTH containers
 kaiContainer.addEventListener('mousedown', startDragging);
 userContainer.addEventListener('mousedown', startDragging);
 
 
-// --- CORE APPLICATION LOGIC (Camera & Voice) ---
-
+// --- 3. CORE LOGIC (With Lip Sync) ---
 function playAudioResponse(url, emotion) {
-    if (isSpeaking) return;
-
+    if (isSpeaking || !head) return;
     isSpeaking = true;
-    const audio = new Audio(url);
     kaiContainer.classList.add('is-speaking'); 
-    
-    audio.play();
-
-    audio.onended = () => {
-        isSpeaking = false;
-        kaiContainer.classList.remove('is-speaking');
-    };
-    
     emotionTag.innerText = emotion.toUpperCase();
+    
+    // Speak using the downloaded audio buffer (Lip-syncs automatically)
+    head.speakAudio(url, { 
+        audio: { 
+            onended: () => {
+                isSpeaking = false;
+                kaiContainer.classList.remove('is-speaking');
+                head.setMood('neutral'); 
+            }
+        },
+        lipsync: { visemeFactor: 1.0 }
+    });
 }
 
 async function startCamera() {
@@ -159,33 +162,20 @@ async function startCamera() {
         console.error("Error accessing camera:", err);
     }
 }
-
 function sendFrameToBackend() {
-    if (isSpeaking || isDragging) {
-        return; 
-    }
+    if (isSpeaking || isDragging) return; 
     const canvas = document.createElement('canvas');
     canvas.width = videoElement.videoWidth;
     canvas.height = videoElement.videoHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(videoElement, 0, 0);
-    
     const dataURL = canvas.toDataURL('image/jpeg', 0.5); 
     socket.emit('video_frame', dataURL);
 }
-
 socket.on('ai_response', (data) => {
     emotionTag.innerText = data.emotion.toUpperCase();
-    
-    if (data.emotion === 'happy') emotionTag.style.backgroundColor = '#2ecc71'; 
-    else if (data.emotion === 'sad') emotionTag.style.backgroundColor = '#3498db'; 
-    else if (data.emotion === 'neutral') emotionTag.style.backgroundColor = '#5a5a5a';
-    else if (data.emotion === 'angry') emotionTag.style.backgroundColor = '#f39c12';
-    else emotionTag.style.backgroundColor = '#9b59b6';
-    
-    if (data.audio_url) {
-        playAudioResponse(data.audio_url, data.emotion);
-    }
+    const colors = { 'happy': '#2ecc71', 'sad': '#3498db', 'neutral': '#5a5a5a', 'angry': '#f39c12' };
+    emotionTag.style.backgroundColor = colors[data.emotion] || '#5a5a5a';
+    if (data.audio_url) playAudioResponse(data.audio_url, data.emotion);
 });
-
 startCamera();
