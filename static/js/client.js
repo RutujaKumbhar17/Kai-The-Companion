@@ -1,13 +1,12 @@
 import { TalkingHead } from "talkinghead";
 
 // --- CONFIGURATION ---
-// FIX 1: Added 'morphTargets=ARKit' (REQUIRED for lip-sync/animation)
-// FIX 2: Added 'textureAtlas=1024' to optimize download size
 const MY_AVATAR_URL = "https://models.readyplayer.me/6924973a1aa3af821a843170.glb?morphTargets=ARKit&textureAtlas=1024";
 
 // --- GLOBAL STATE ---
 const socket = io();
 let head; 
+let localStream = null; // Made global to access in buttons
 let isSpeaking = false;
 let isDragging = false;
 let activePip = null; 
@@ -19,12 +18,12 @@ const userContainer = document.getElementById('user-video-container');
 const videoElement = document.getElementById('userVideo');
 const emotionTag = document.getElementById('emotionTag');
 const avatarNode = document.getElementById('avatar-container');
+const btnMic = document.getElementById('btn-mic');
+const btnCam = document.getElementById('btn-cam');
 
 // --- 1. INITIALIZE THE 3D AVATAR ---
 async function initAvatar() {
     console.log("Initializing Avatar...");
-    
-    // Loading Text with ID for easy removal
     avatarNode.innerHTML = `
         <div id="loading-overlay" style="text-align:center; padding-top:20%;">
             <h2 style="color:white;">Loading Kai...</h2>
@@ -35,52 +34,68 @@ async function initAvatar() {
     const loadingOverlay = document.getElementById('loading-overlay');
 
     try {
-        // Initialize Engine
         head = new TalkingHead(avatarNode, {
             ttsEndpoint: "https://eu-texttospeech.googleapis.com/v1beta1/text:synthesize", 
             cameraView: "upper", 
-            cameraDistance: 1.6,
+            
+            // FIX: Decreased distance to 0.6 to ZOOM IN and fill the empty space
+            cameraDistance: 0.6, 
+            
             ambientLightIntensity: 1.0,
             cameraRotateEnable: false 
         });
 
         statusText.innerText = "Downloading Model...";
 
-        // Load Model
         await head.showAvatar({
             url: MY_AVATAR_URL,
             body: 'F',
             avatarMood: 'neutral', 
             lipsyncLang: 'en' 
         }, (progress) => {
-            // FIX 3: Progress Callback to see real-time download status
             if (progress.lengthComputable) {
                 const percent = Math.round((progress.loaded / progress.total) * 100);
                 statusText.innerText = `Downloading: ${percent}%`;
             }
         });
 
-        console.log("Avatar Loaded Successfully!");
-        
-        // FIX 4: Explicitly remove the loading text now that the avatar is ready
         if (loadingOverlay) loadingOverlay.style.display = 'none';
-        
-        // Set state
         head.setMood('neutral'); 
 
     } catch (error) {
         console.error("AVATAR ERROR:", error);
         statusText.innerHTML = `<span style="color:red">Error: ${error.message}</span>`;
-        // Suggest checking console if it's a CORS/Network error
-        alert("Could not load Avatar. Check console (F12) for details.");
     }
 }
-
-// Start loading
 initAvatar();
 
+// --- 2. CONTROL BUTTONS LOGIC ---
+let isMicOn = true;
+let isCamOn = true;
 
-// --- 2. LAYOUT & DRAG LOGIC ---
+btnMic.addEventListener('click', () => {
+    if (!localStream) return;
+    isMicOn = !isMicOn;
+    // Toggle Audio Track
+    localStream.getAudioTracks()[0].enabled = isMicOn;
+    
+    // Update UI (Red background + slash icon when off)
+    btnMic.innerHTML = isMicOn ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
+    btnMic.style.backgroundColor = isMicOn ? '#4a4a4a' : '#e74c3c';
+});
+
+btnCam.addEventListener('click', () => {
+    if (!localStream) return;
+    isCamOn = !isCamOn;
+    // Toggle Video Track
+    localStream.getVideoTracks()[0].enabled = isCamOn;
+    
+    // Update UI
+    btnCam.innerHTML = isCamOn ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
+    btnCam.style.backgroundColor = isCamOn ? '#4a4a4a' : '#e74c3c';
+});
+
+// --- 3. LAYOUT & DRAG LOGIC ---
 function toggleVideoLayout() {
     const kaiIsPrimary = kaiContainer.classList.contains('primary-view');
     if (kaiIsPrimary) {
@@ -92,7 +107,6 @@ function toggleVideoLayout() {
         userContainer.classList.replace('primary-view', 'secondary-pip');
         userContainer.classList.add('movable-pip');
     }
-    // Reset positions
     [kaiContainer, userContainer].forEach(el => {
         el.style.left = ''; el.style.top = ''; 
         el.style.right = '30px'; el.style.bottom = '100px';
@@ -100,6 +114,10 @@ function toggleVideoLayout() {
 }
 kaiContainer.addEventListener('dblclick', toggleVideoLayout);
 userContainer.addEventListener('dblclick', toggleVideoLayout);
+
+// ... (Dragging logic kept identical, omitted for brevity, copy previous drag functions here if needed) ...
+// NOTE: For full functionality, keep the standard drag functions (startDragging, handleDragging, stopDragging)
+// I will include them here to be safe and complete:
 
 function startDragging(e) {
     const targetContainer = e.currentTarget;
@@ -143,7 +161,7 @@ kaiContainer.addEventListener('mousedown', startDragging);
 userContainer.addEventListener('mousedown', startDragging);
 
 
-// --- 3. CORE LOGIC ---
+// --- 4. CORE LOGIC ---
 function playAudioResponse(url, emotion) {
     if (isSpeaking || !head) return;
     isSpeaking = true;
@@ -164,15 +182,19 @@ function playAudioResponse(url, emotion) {
 
 async function startCamera() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoElement.srcObject = stream;
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        videoElement.srcObject = localStream;
         setInterval(sendFrameToBackend, 500); 
     } catch (err) {
         console.error("Error accessing camera:", err);
+        alert("Camera Access Denied or Error.");
     }
 }
+
 function sendFrameToBackend() {
-    if (isSpeaking || isDragging) return; 
+    // FIX: Don't send frames if video is toggled OFF (saves resources/bandwidth)
+    if (isSpeaking || isDragging || !isCamOn) return; 
+    
     const canvas = document.createElement('canvas');
     canvas.width = videoElement.videoWidth;
     canvas.height = videoElement.videoHeight;
@@ -181,10 +203,12 @@ function sendFrameToBackend() {
     const dataURL = canvas.toDataURL('image/jpeg', 0.5); 
     socket.emit('video_frame', dataURL);
 }
+
 socket.on('ai_response', (data) => {
     emotionTag.innerText = data.emotion.toUpperCase();
     const colors = { 'happy': '#2ecc71', 'sad': '#3498db', 'neutral': '#5a5a5a', 'angry': '#f39c12' };
     emotionTag.style.backgroundColor = colors[data.emotion] || '#5a5a5a';
     if (data.audio_url) playAudioResponse(data.audio_url, data.emotion);
 });
+
 startCamera();

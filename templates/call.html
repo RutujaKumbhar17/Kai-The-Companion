@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <title>Kai Video Companion</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 
-   <script type="importmap">
+    <script type="importmap">
     {
         "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js",
@@ -22,7 +20,6 @@
 <body>
 
     <div class="main-screen">
-        
         <div class="header-panel">
             <div class="header-text-small">Video Calling</div>
             <div class="header-text-large">Kai</div>
@@ -30,7 +27,6 @@
 
         <div id="kai-video-container" class="video-container primary-view">
             <div id="avatar-container"></div> 
-            
             <div class="label kai-label">Kai (AI)</div>
         </div>
 
@@ -41,8 +37,8 @@
         </div>
         
         <div class="controls-bar">
-            <button class="control-btn"><i class="fas fa-microphone"></i></button>
-            <button class="control-btn"><i class="fas fa-video"></i></button>
+            <button class="control-btn" id="btn-mic"><i class="fas fa-microphone"></i></button>
+            <button class="control-btn" id="btn-cam"><i class="fas fa-video"></i></button>
             <button class="control-btn hangup" onclick="window.close()"><i class="fas fa-phone-slash"></i></button>
         </div>
 

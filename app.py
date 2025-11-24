@@ -4,13 +4,13 @@ from camera_utils import analyze_emotion_from_frame
 from gtts import gTTS 
 import os 
 import time
+import glob # Imported for file cleanup
 
 # NEW: Import Gemini SDK
 from google import genai
 from google.genai.errors import APIError
 
 # --- GEMINI SETUP ---
-# Client initialization. It uses the GEMINI_API_KEY environment variable.
 try:
     client = genai.Client()
 except Exception as e:
@@ -30,17 +30,24 @@ if not os.path.exists(AUDIO_DIR):
 def index():
     return render_template('call.html')
 
+def cleanup_audio_folder():
+    """Deletes audio files older than 30 seconds to prevent storage buildup."""
+    try:
+        current_time = time.time()
+        files = glob.glob(os.path.join(AUDIO_DIR, "*.mp3"))
+        for f in files:
+            # Delete if file is older than 30 seconds
+            if current_time - os.path.getctime(f) > 30:
+                os.remove(f)
+    except Exception as e:
+        print(f"Cleanup Error: {e}")
 
 def generate_llm_response(emotion):
     """Calls the Gemini LLM for an emotional, contextual response."""
-    
-    # Fallback if Gemini client failed to initialize
     if not client:
         return "Sorry, the AI is offline right now. I'm listening, though."
     
-    # Custom prompt based on emotion for a compassionate companion
     if emotion == 'neutral':
-        # Added a non-committal response to prevent "SCANNING..." freeze
         prompt_text = "You seem composed. I'm here, listening closely. What's on your mind today?"
     else:
         prompt_text = f"""
@@ -61,13 +68,14 @@ def generate_llm_response(emotion):
         print(f"Gemini API Error: {e}")
         return "I'm having a technical issue with my voice system, but I still want to hear what's on your mind."
     except Exception as e:
-        # Generic error fallback
         return "I'm here for you."
-
 
 def generate_tts_audio(text, emotion):
     """Converts LLM text response into a temporary MP3 file."""
     
+    # 1. Clean up old files before creating a new one
+    cleanup_audio_folder()
+
     filename = f"response_{time.time()}.mp3" 
     audio_path = os.path.join(AUDIO_DIR, filename)
 
@@ -84,16 +92,9 @@ def generate_tts_audio(text, emotion):
 def handle_frame(data_url):
     emotion = analyze_emotion_from_frame(data_url)
     
-    # FIX: Respond on successful detection, even if 'neutral', to prevent 'SCANNING...' freeze.
     if emotion:
-            
-        # 1. Generate Intelligent Text from Gemini (handles neutral/offline fallback)
         llm_text = generate_llm_response(emotion)
-        
-        # 2. Generate Audio from the LLM Text
         audio_url = generate_tts_audio(llm_text, emotion)
-        
-        # 3. Emit data to frontend (always sends the latest emotion, even if audio generation fails)
         emit('ai_response', {'emotion': emotion, 'audio_url': audio_url})
 
 if __name__ == '__main__':
