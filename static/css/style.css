@@ -1,14 +1,19 @@
 :root {
     /* WhatsApp Inspired Colors */
-    --primary-color: #008069; /* WhatsApp Green/Teal */
-    --secondary-color: #1a1a1a; /* Dark background */
-    --header-bg: rgba(0, 0, 0, 0.4); /* Transparent dark header */
-    --control-bg: rgba(25, 25, 25, 0.85); /* Slightly darker control bar */
+    --primary-color: #008069; 
+    --secondary-color: #1a1a1a; 
+    --header-bg: rgba(0, 0, 0, 0.4); 
+    --control-bg: rgba(25, 25, 25, 0.85); 
     --card-shadow: 0 4px 12px rgba(0,0,0,0.6);
     --light-text: #FFFFFF;
     --dark-text: #E0E0E0;
     --pip-size-width: 250px;
     --pip-size-height: 180px;
+    
+    /* NEW: Chat Colors */
+    --chat-bg: rgba(30, 30, 30, 0.95);
+    --user-msg-bg: #005c4b;
+    --bot-msg-bg: #363636;
 }
 
 body {
@@ -33,14 +38,14 @@ body {
     overflow: hidden;
 }
 
-/* --- HEADER PANEL (Subtle, Overlay) --- */
+/* --- HEADER PANEL --- */
 .header-panel {
     position: absolute;
     top: 0; 
     left: 0;
     width: 100%; 
     height: 70px;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0)); /* Gradient Fade */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
     color: var(--light-text); 
     padding: 0 40px;
     z-index: 1000;
@@ -66,7 +71,7 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* --- VIDEO CONTAINERS BASE STYLES --- */
+/* --- VIDEO CONTAINERS --- */
 .video-container {
     position: absolute;
     top: 0;
@@ -74,7 +79,7 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother animation curve */
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -82,32 +87,25 @@ body {
     background: #000;
 }
 
-/* --- PRIMARY (FULL SCREEN) VIEW --- */
 .primary-view {
     z-index: 5;
     border-radius: 0;
 }
 
-.primary-view .avatar-img,
 .primary-view video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform: scaleX(-1); 
 }
 
-.primary-view video {
-    transform: scaleX(-1); /* Mirror main video too */
-}
-
-
-/* --- SECONDARY (PICTURE-IN-PICTURE) VIEW --- */
 .secondary-pip {
     width: var(--pip-size-width); 
     height: var(--pip-size-height);
     background: #202020;
     border-radius: 12px;
     position: absolute; 
-    bottom: 100px; /* Moved up to avoid controls bar */
+    bottom: 100px; 
     right: 30px; 
     top: auto; 
     left: auto; 
@@ -130,18 +128,9 @@ body {
     transform: scaleX(-1);
 }
 
-/* NEW RULE: HIDE KAI's IMAGE WHEN IN PiP MODE */
-/* COMMENTED OUT: We want Kai visible in PiP! */
-/* .secondary-pip #kaiAvatar { 
-    display: none;
-} */
+.primary-view #kaiAvatar { display: block; }
 
-/* NEW RULE: SHOW KAI's AVATAR WHEN IN PRIMARY MODE */
-.primary-view #kaiAvatar {
-    display: block;
-}
-
-/* --- UI Elements (Labels, Emotion Tag, Toggle Button) --- */
+/* --- UI Elements --- */
 .label {
     position: absolute;
     bottom: 5px;
@@ -168,12 +157,7 @@ body {
     z-index: 110;
 }
 
-/* Toggle Button Removed - Styles kept just in case or can be removed */
-.toggle-view-btn {
-    display: none; 
-}
-
-/* --- Controls Bar (WhatsApp style) --- */
+/* --- CONTROLS BAR --- */
 .controls-bar {
     position: fixed; 
     bottom: 20px;
@@ -201,9 +185,7 @@ body {
     transition: all 0.1s ease;
 }
 
-.control-btn:hover {
-    background: #5a5a5a;
-}
+.control-btn:hover { background: #5a5a5a; }
 
 .control-btn:active {
     box-shadow: 0 1px 0 #2c2c2c;
@@ -214,39 +196,114 @@ body {
     background: #e74c3c; 
     box-shadow: 0 3px 0 #b3362d;
 }
-.control-btn.hangup:active {
-    box-shadow: 0 1px 0 #b3362d;
+.control-btn.hangup:active { box-shadow: 0 1px 0 #b3362d; }
+
+/* --- NEW: CHAT PANEL STYLES --- */
+.chat-panel {
+    position: absolute;
+    right: 20px;
+    top: 80px; /* Below header */
+    bottom: 100px; /* Above controls */
+    width: 320px;
+    background: var(--chat-bg);
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
 }
 
-/* --- SPEAKING ANIMATION --- */
+.chat-panel.hidden {
+    transform: translateX(120%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.chat-header {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.bot-msg {
+    background: var(--bot-msg-bg);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.user-msg {
+    background: var(--user-msg-bg);
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-input-area {
+    padding: 15px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    gap: 10px;
+}
+
+#chat-input {
+    flex: 1;
+    background: #2a2a2a;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 15px;
+    color: white;
+    outline: none;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.icon-btn:hover { color: var(--primary-color); }
+#send-btn { color: var(--primary-color); }
+
+/* --- 3D AVATAR --- */
+#kai-video-container { background-color: #000; }
+#avatar-container { width: 100%; height: 100%; overflow: hidden; }
+#avatar-container canvas {
+    display: block; width: 100% !important; height: 100% !important;
+}
+
+/* Animations */
 @keyframes speakingPulse {
     0% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.005); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
 }
-
 .primary-view.is-speaking #kaiAvatar {
     animation: speakingPulse 0.4s infinite alternate;
-}
-
-/* --- 3D AVATAR SPECIFIC STYLES --- */
-
-/* Ensure the container holding the avatar has a black background */
-#kai-video-container {
-    background-color: #000;
-}
-
-/* Force the 3D canvas (generated by JS) to fill the parent completely */
-#avatar-container {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
-
-#avatar-container canvas {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-    outline: none;
-    object-fit: cover;
 }

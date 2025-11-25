@@ -6,7 +6,7 @@ const MY_AVATAR_URL = "https://models.readyplayer.me/6924973a1aa3af821a843170.gl
 // --- GLOBAL STATE ---
 const socket = io();
 let head; 
-let localStream = null; // Made global to access in buttons
+let localStream = null; 
 let isSpeaking = false;
 let isDragging = false;
 let activePip = null; 
@@ -20,6 +20,14 @@ const emotionTag = document.getElementById('emotionTag');
 const avatarNode = document.getElementById('avatar-container');
 const btnMic = document.getElementById('btn-mic');
 const btnCam = document.getElementById('btn-cam');
+
+// NEW: Chat Elements
+const btnChat = document.getElementById('btn-chat');
+const chatPanel = document.getElementById('chat-panel');
+const btnCloseChat = document.getElementById('close-chat');
+const chatInput = document.getElementById('chat-input');
+const btnSend = document.getElementById('send-btn');
+const chatMessages = document.getElementById('chat-messages');
 
 // --- 1. INITIALIZE THE 3D AVATAR ---
 async function initAvatar() {
@@ -37,10 +45,7 @@ async function initAvatar() {
         head = new TalkingHead(avatarNode, {
             ttsEndpoint: "https://eu-texttospeech.googleapis.com/v1beta1/text:synthesize", 
             cameraView: "upper", 
-            
-            // FIX: Decreased distance to 0.6 to ZOOM IN and fill the empty space
             cameraDistance: 0.3, 
-            
             ambientLightIntensity: 1.0,
             cameraRotateEnable: true 
         });
@@ -76,10 +81,7 @@ let isCamOn = true;
 btnMic.addEventListener('click', () => {
     if (!localStream) return;
     isMicOn = !isMicOn;
-    // Toggle Audio Track
     localStream.getAudioTracks()[0].enabled = isMicOn;
-    
-    // Update UI (Red background + slash icon when off)
     btnMic.innerHTML = isMicOn ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
     btnMic.style.backgroundColor = isMicOn ? '#4a4a4a' : '#e74c3c';
 });
@@ -87,13 +89,56 @@ btnMic.addEventListener('click', () => {
 btnCam.addEventListener('click', () => {
     if (!localStream) return;
     isCamOn = !isCamOn;
-    // Toggle Video Track
     localStream.getVideoTracks()[0].enabled = isCamOn;
-    
-    // Update UI
     btnCam.innerHTML = isCamOn ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
     btnCam.style.backgroundColor = isCamOn ? '#4a4a4a' : '#e74c3c';
 });
+
+// --- NEW: CHAT LOGIC ---
+function toggleChat() {
+    chatPanel.classList.toggle('hidden');
+    // Change button style when active
+    if (!chatPanel.classList.contains('hidden')) {
+        btnChat.style.backgroundColor = '#008069'; // Active color
+    } else {
+        btnChat.style.backgroundColor = '#4a4a4a'; // Default
+    }
+}
+
+function appendMessage(text, sender) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('message');
+    msgDiv.classList.add(sender === 'user' ? 'user-msg' : 'bot-msg');
+    msgDiv.innerText = text;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll
+}
+
+function sendChatMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    // Add user message to UI
+    appendMessage(text, 'user');
+    chatInput.value = '';
+
+    // Send to backend
+    socket.emit('chat_message', { message: text });
+}
+
+btnChat.addEventListener('click', toggleChat);
+btnCloseChat.addEventListener('click', toggleChat);
+
+btnSend.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendChatMessage();
+});
+
+// Listen for Chat Responses from Server
+socket.on('chat_response', (data) => {
+    appendMessage(data.response, 'bot');
+});
+
 
 // --- 3. LAYOUT & DRAG LOGIC ---
 function toggleVideoLayout() {
@@ -114,10 +159,6 @@ function toggleVideoLayout() {
 }
 kaiContainer.addEventListener('dblclick', toggleVideoLayout);
 userContainer.addEventListener('dblclick', toggleVideoLayout);
-
-// ... (Dragging logic kept identical, omitted for brevity, copy previous drag functions here if needed) ...
-// NOTE: For full functionality, keep the standard drag functions (startDragging, handleDragging, stopDragging)
-// I will include them here to be safe and complete:
 
 function startDragging(e) {
     const targetContainer = e.currentTarget;
@@ -192,7 +233,6 @@ async function startCamera() {
 }
 
 function sendFrameToBackend() {
-    // FIX: Don't send frames if video is toggled OFF (saves resources/bandwidth)
     if (isSpeaking || isDragging || !isCamOn) return; 
     
     const canvas = document.createElement('canvas');

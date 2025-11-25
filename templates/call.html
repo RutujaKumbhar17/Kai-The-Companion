@@ -36,9 +36,24 @@
             <div class="label user-label">You</div>
         </div>
         
+        <div id="chat-panel" class="chat-panel hidden">
+            <div class="chat-header">
+                <span>Chat with Kai</span>
+                <button id="close-chat" class="icon-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+                <div class="message bot-msg">Hello! I'm Kai. You can speak to me or type here.</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Type a message...">
+                <button id="send-btn" class="icon-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
         <div class="controls-bar">
             <button class="control-btn" id="btn-mic"><i class="fas fa-microphone"></i></button>
             <button class="control-btn" id="btn-cam"><i class="fas fa-video"></i></button>
+            <button class="control-btn" id="btn-chat"><i class="fas fa-comment-alt"></i></button>
             <button class="control-btn hangup" onclick="window.close()"><i class="fas fa-phone-slash"></i></button>
         </div>
 

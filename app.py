@@ -4,9 +4,8 @@ from camera_utils import analyze_emotion_from_frame
 from gtts import gTTS 
 import os 
 import time
-import glob # Imported for file cleanup
+import glob 
 
-# NEW: Import Gemini SDK
 from google import genai
 from google.genai.errors import APIError
 
@@ -36,16 +35,15 @@ def cleanup_audio_folder():
         current_time = time.time()
         files = glob.glob(os.path.join(AUDIO_DIR, "*.mp3"))
         for f in files:
-            # Delete if file is older than 30 seconds
             if current_time - os.path.getctime(f) > 15:
                 os.remove(f)
     except Exception as e:
         print(f"Cleanup Error: {e}")
 
 def generate_llm_response(emotion):
-    """Calls the Gemini LLM for an emotional, contextual response."""
+    """(Existing) Video/Audio Response Logic"""
     if not client:
-        return "Sorry, the AI is offline right now. I'm listening, though."
+        return "Sorry, the AI is offline right now."
     
     if emotion == 'neutral':
         prompt_text = "You seem composed. I'm here, listening closely. What's on your mind today?"
@@ -64,25 +62,41 @@ def generate_llm_response(emotion):
             config={"temperature": 0.7}
         )
         return response.text
-    except APIError as e:
-        print(f"Gemini API Error: {e}")
-        return "I'm having a technical issue with my voice system, but I still want to hear what's on your mind."
     except Exception as e:
         return "I'm here for you."
 
+def generate_chat_response(user_text):
+    """(NEW) Text Chat Logic"""
+    if not client:
+        return "System offline."
+    
+    prompt_text = f"""
+    Act as 'Kai', a compassionate and wise AI companion.
+    The user sent this message via text chat: "{user_text}"
+    Reply directly to the user's text. Keep it conversational, helpful, and concise (max 3 sentences).
+    Maintain a warm, supportive tone.
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[prompt_text],
+            config={"temperature": 0.7}
+        )
+        return response.text
+    except Exception as e:
+        print(f"Chat API Error: {e}")
+        return "I am having trouble processing that message."
+
 def generate_tts_audio(text, emotion):
     """Converts LLM text response into a temporary MP3 file."""
-    
-    # 1. Clean up old files before creating a new one
     cleanup_audio_folder()
-
     filename = f"response_{time.time()}.mp3" 
     audio_path = os.path.join(AUDIO_DIR, filename)
 
     try:
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(audio_path)
-        
         return url_for('static', filename=f'audio/{filename}')
     except Exception as e:
         print(f"TTS Error: {e}")
@@ -91,12 +105,20 @@ def generate_tts_audio(text, emotion):
 @socketio.on('video_frame')
 def handle_frame(data_url):
     emotion = analyze_emotion_from_frame(data_url)
-    
     if emotion:
         llm_text = generate_llm_response(emotion)
         audio_url = generate_tts_audio(llm_text, emotion)
         emit('ai_response', {'emotion': emotion, 'audio_url': audio_url})
 
+# --- NEW: Chat Message Handler ---
+@socketio.on('chat_message')
+def handle_chat(data):
+    user_msg = data.get('message', '')
+    if user_msg.strip():
+        bot_reply = generate_chat_response(user_msg)
+        # Emit back to the specific client
+        emit('chat_response', {'response': bot_reply})
+
 if __name__ == '__main__':
-    print("Starting Kai Server (with Gemini Integration)...")
+    print("Starting Kai Server (with Gemini Integration & Chat)...")
     socketio.run(app, debug=True, port=5000)
