@@ -1,5 +1,4 @@
 :root {
-    /* WhatsApp Inspired Colors */
     --primary-color: #008069; 
     --secondary-color: #1a1a1a; 
     --header-bg: rgba(0, 0, 0, 0.4); 
@@ -53,6 +52,7 @@ body {
     align-items: center;
     justify-content: center;
     box-shadow: none;
+    pointer-events: none; /* Let clicks pass through to video */
 }
 
 .header-text-large {
@@ -198,26 +198,37 @@ body {
 }
 .control-btn.hangup:active { box-shadow: 0 1px 0 #b3362d; }
 
-/* --- CHAT PANEL STYLES (LEFT SIDE) --- */
+/* --- CHAT PANEL STYLES (UPDATED FOR RESIZING) --- */
 .chat-panel {
     position: absolute;
-    left: 20px;  /* CHANGED: Positioned on the LEFT */
-    top: 80px; /* Below header */
-    bottom: 100px; /* Above controls */
+    left: 20px;
+    top: 80px; 
+    /* Default size */
     width: 320px;
+    height: 60vh; 
+    
+    /* RESIZABLE PROPERTIES */
+    min-width: 250px;
+    min-height: 300px;
+    max-width: 90vw;
+    max-height: 80vh;
+    resize: both; /* Enables resizing handle in bottom right */
+    overflow: hidden; /* Contains children */
+    
     background: var(--chat-bg);
     border-radius: 15px;
     display: flex;
     flex-direction: column;
     z-index: 2000;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.5); /* Shadow adjusted to the right */
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; 
+    /* Removed width transition to allow manual resize */
     border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(10px);
 }
 
 .chat-panel.hidden {
-    transform: translateX(-120%); /* CHANGED: Slides out to the LEFT */
+    transform: translateX(-150%);
     opacity: 0;
     pointer-events: none;
 }
@@ -230,6 +241,7 @@ body {
     align-items: center;
     font-weight: bold;
     font-size: 1rem;
+    cursor: default;
 }
 
 .chat-messages {
@@ -267,6 +279,7 @@ body {
     border-top: 1px solid rgba(255,255,255,0.1);
     display: flex;
     gap: 10px;
+    background: transparent;
 }
 
 #chat-input {

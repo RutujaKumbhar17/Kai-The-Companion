@@ -3,5 +3,6 @@ flask-socketio
 opencv-python
 numpy
 deepface
+tf-keras
 gTTS
 requests

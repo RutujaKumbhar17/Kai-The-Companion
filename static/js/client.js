@@ -21,7 +21,7 @@ const avatarNode = document.getElementById('avatar-container');
 const btnMic = document.getElementById('btn-mic');
 const btnCam = document.getElementById('btn-cam');
 
-// NEW: Chat Elements
+// Chat Elements
 const btnChat = document.getElementById('btn-chat');
 const chatPanel = document.getElementById('chat-panel');
 const btnCloseChat = document.getElementById('close-chat');
@@ -74,34 +74,57 @@ async function initAvatar() {
 }
 initAvatar();
 
-// --- 2. CONTROL BUTTONS LOGIC ---
+// --- 2. CONTROL BUTTONS LOGIC (UPDATED & VERIFIED) ---
 let isMicOn = true;
 let isCamOn = true;
 
 btnMic.addEventListener('click', () => {
-    if (!localStream) return;
+    if (!localStream) {
+        console.warn("No stream to toggle mic");
+        return;
+    }
     isMicOn = !isMicOn;
-    localStream.getAudioTracks()[0].enabled = isMicOn;
+    
+    // Toggle actual audio track
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length > 0) {
+        audioTracks[0].enabled = isMicOn;
+    }
+
+    // Update Button UI
     btnMic.innerHTML = isMicOn ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
     btnMic.style.backgroundColor = isMicOn ? '#4a4a4a' : '#e74c3c';
+    console.log("Mic toggled:", isMicOn);
 });
 
 btnCam.addEventListener('click', () => {
-    if (!localStream) return;
+    if (!localStream) {
+        console.warn("No stream to toggle cam");
+        return;
+    }
     isCamOn = !isCamOn;
-    localStream.getVideoTracks()[0].enabled = isCamOn;
+    
+    // Toggle actual video track
+    const videoTracks = localStream.getVideoTracks();
+    if (videoTracks.length > 0) {
+        videoTracks[0].enabled = isCamOn;
+    }
+
+    // Update Button UI and Local Video Feedback
     btnCam.innerHTML = isCamOn ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
     btnCam.style.backgroundColor = isCamOn ? '#4a4a4a' : '#e74c3c';
+    videoElement.style.opacity = isCamOn ? "1" : "0"; // Hide local video if off
+    
+    console.log("Camera toggled:", isCamOn);
 });
 
 // --- NEW: CHAT LOGIC ---
 function toggleChat() {
     chatPanel.classList.toggle('hidden');
-    // Change button style when active
     if (!chatPanel.classList.contains('hidden')) {
-        btnChat.style.backgroundColor = '#008069'; // Active color
+        btnChat.style.backgroundColor = '#008069'; 
     } else {
-        btnChat.style.backgroundColor = '#4a4a4a'; // Default
+        btnChat.style.backgroundColor = '#4a4a4a'; 
     }
 }
 
@@ -111,14 +134,13 @@ function appendMessage(text, sender) {
     msgDiv.classList.add(sender === 'user' ? 'user-msg' : 'bot-msg');
     msgDiv.innerText = text;
     chatMessages.appendChild(msgDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll
+    chatMessages.scrollTop = chatMessages.scrollHeight; 
 }
 
 function sendChatMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    // Add user message to UI
     appendMessage(text, 'user');
     chatInput.value = '';
 
@@ -134,7 +156,7 @@ chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendChatMessage();
 });
 
-// Listen for Chat Responses from Server
+// Listen for Chat Responses from Server (Text)
 socket.on('chat_response', (data) => {
     appendMessage(data.response, 'bot');
 });
@@ -225,14 +247,17 @@ async function startCamera() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         videoElement.srcObject = localStream;
+        
+        // Start sending frames
         setInterval(sendFrameToBackend, 500); 
     } catch (err) {
         console.error("Error accessing camera:", err);
-        alert("Camera Access Denied or Error.");
+        alert("Camera Access Denied or Error. Please check permissions.");
     }
 }
 
 function sendFrameToBackend() {
+    // PREVENT sending frames if Camera is disabled to save resources
     if (isSpeaking || isDragging || !isCamOn) return; 
     
     const canvas = document.createElement('canvas');
