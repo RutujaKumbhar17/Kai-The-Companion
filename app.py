@@ -11,7 +11,7 @@ from google.genai.errors import APIError
 
 # --- GEMINI SETUP ---
 try:
-    client = genai.Client()
+    client = genai.Client(api_key=os.getenv("AIzaSyCCDZGVYNDwlIq4p_OAJTo3mAKYazyLNys"))
 except Exception as e:
     print("FATAL ERROR: Failed to initialize Gemini Client. Check your API Key setup.")
     client = None

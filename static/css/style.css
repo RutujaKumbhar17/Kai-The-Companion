@@ -10,7 +10,7 @@
     --pip-size-width: 250px;
     --pip-size-height: 180px;
     
-    /* NEW: Chat Colors */
+    /* Chat Colors */
     --chat-bg: rgba(30, 30, 30, 0.95);
     --user-msg-bg: #005c4b;
     --bot-msg-bg: #363636;
@@ -198,10 +198,10 @@ body {
 }
 .control-btn.hangup:active { box-shadow: 0 1px 0 #b3362d; }
 
-/* --- NEW: CHAT PANEL STYLES --- */
+/* --- CHAT PANEL STYLES (LEFT SIDE) --- */
 .chat-panel {
     position: absolute;
-    right: 20px;
+    left: 20px;  /* CHANGED: Positioned on the LEFT */
     top: 80px; /* Below header */
     bottom: 100px; /* Above controls */
     width: 320px;
@@ -210,14 +210,14 @@ body {
     display: flex;
     flex-direction: column;
     z-index: 2000;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5); /* Shadow adjusted to the right */
     transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
     border: 1px solid rgba(255,255,255,0.1);
     backdrop-filter: blur(10px);
 }
 
 .chat-panel.hidden {
-    transform: translateX(120%);
+    transform: translateX(-120%); /* CHANGED: Slides out to the LEFT */
     opacity: 0;
     pointer-events: none;
 }
