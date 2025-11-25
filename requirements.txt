@@ -4,5 +4,5 @@ opencv-python
 numpy
 deepface
 tf-keras
-gTTS           
-google-genai    
+gTTS
+requests
