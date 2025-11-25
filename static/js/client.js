@@ -39,10 +39,10 @@ async function initAvatar() {
             cameraView: "upper", 
             
             // FIX: Decreased distance to 0.6 to ZOOM IN and fill the empty space
-            cameraDistance: 0.6, 
+            cameraDistance: 0.3, 
             
             ambientLightIntensity: 1.0,
-            cameraRotateEnable: false 
+            cameraRotateEnable: true 
         });
 
         statusText.innerText = "Downloading Model...";

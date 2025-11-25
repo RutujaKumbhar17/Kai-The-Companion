@@ -37,7 +37,7 @@ def cleanup_audio_folder():
         files = glob.glob(os.path.join(AUDIO_DIR, "*.mp3"))
         for f in files:
             # Delete if file is older than 30 seconds
-            if current_time - os.path.getctime(f) > 30:
+            if current_time - os.path.getctime(f) > 15:
                 os.remove(f)
     except Exception as e:
         print(f"Cleanup Error: {e}")
