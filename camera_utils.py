@@ -24,5 +24,5 @@ def analyze_emotion_from_frame(data_url):
         return None # Return None if DeepFace runs but doesn't find a face
         
     except Exception as e:
-        # Pass silently if no face is detected or if an error occurs
+        
         return None

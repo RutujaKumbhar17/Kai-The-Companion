@@ -5,76 +5,49 @@ from gtts import gTTS
 import os 
 import time
 import glob 
-import requests 
+import google.generativeai as genai
+from config import apikey
 
 # --- CONFIGURATION ---
-# 1. PASTE YOUR TELEGRAM BOT TOKEN
-TELEGRAM_BOT_TOKEN = "8296293060:AAGdESaeO9smX57D5o3FVsiGJtNWX_zYMis"
-
-# 2. PASTE YOUR PERSONAL TELEGRAM CHAT ID
-# (Message @userinfobot on Telegram to get your numeric ID, e.g., "123456789")
-TELEGRAM_CHAT_ID = "8296293060" 
-
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
-
-# --- APP SETUP ---
 app = Flask(__name__)
 app.config['STATIC_FOLDER'] = 'static'
 app.config['STATIC_URL_PATH'] = '/static'
+app.config['SECRET_KEY'] = 'kai_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configure Gemini AI
+genai.configure(api_key=apikey)
+model = genai.GenerativeModel('gemini-2.5-pro') 
 
 AUDIO_DIR = os.path.join(app.root_path, 'static', 'audio')
 if not os.path.exists(AUDIO_DIR):
     os.makedirs(AUDIO_DIR)
 
+# --- ROUTES ---
 @app.route('/')
 def index():
     return render_template('call.html')
 
 # --- HELPER FUNCTIONS ---
 def cleanup_audio_folder():
-    """Deletes old audio files."""
+    """Deletes old audio files to save space."""
     try:
         current_time = time.time()
         files = glob.glob(os.path.join(AUDIO_DIR, "*.mp3"))
         for f in files:
-            if current_time - os.path.getctime(f) > 30:
+            if current_time - os.path.getctime(f) > 30: # Remove files older than 30s
                 os.remove(f)
     except Exception as e:
         print(f"Cleanup Error: {e}")
 
-def send_telegram_message(text):
-    """Sends a message to the Admin's Telegram."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("Telegram Configuration Missing!")
-        return
-
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text}
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Telegram Send Error: {e}")
-
-def generate_static_response(emotion):
-    """Returns a gentle, pre-set response based on emotion (No AI)."""
-    responses = {
-        'happy': "It warms my heart to see you smiling!",
-        'sad': "I sense you are feeling down. I am here with you.",
-        'angry': "Take a deep breath. Let's find some calm together.",
-        'neutral': "I am listening. I am here.",
-        'fear': "You are safe here. Take your time.",
-        'surprise': "Oh! That looks unexpected."
-    }
-    return responses.get(emotion, "I am here for you.")
-
 def generate_tts_audio(text):
-    """Converts text to speech."""
+    """Converts text to speech using Google TTS and returns the URL."""
     cleanup_audio_folder()
-    filename = f"response_{time.time()}.mp3" 
+    filename = f"response_{int(time.time())}.mp3" 
     audio_path = os.path.join(AUDIO_DIR, filename)
 
     try:
+        # Generate MP3
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(audio_path)
         return url_for('static', filename=f'audio/{filename}')
@@ -82,56 +55,69 @@ def generate_tts_audio(text):
         print(f"TTS Error: {e}")
         return None
 
-# --- WEBHOOK (TELEGRAM -> WEB) ---
-@app.route('/telegram', methods=['POST'])
-def telegram_webhook():
-    """Receives replies from Telegram and sends them to the Web Interface."""
-    data = request.json
+def get_ai_response(text):
+    """Queries the Gemini Model."""
     try:
-        if "message" in data and "text" in data["message"]:
-            sender_id = str(data["message"]["chat"]["id"])
-            text = data["message"]["text"]
-            
-            # Verify the message is from the Admin
-            if sender_id == TELEGRAM_CHAT_ID:
-                print(f"Admin replied: {text}")
-                # Send to Web UI
-                socketio.emit('chat_response', {'response': text})
-            else:
-                print(f"Ignored message from unknown ID: {sender_id}")
-
+        # Prompt engineering to ensure Kai behaves like a companion
+        prompt = f"You are Kai, a helpful and empathetic AI video companion. Keep your response concise (under 2 sentences) and conversational. User says: {text}"
+        response = model.generate_content(prompt)
+        return response.text
     except Exception as e:
-        print(f"Webhook Error: {e}")
-        
-    return "OK", 200
+        print(f"Gemini Error: {e}")
+        return "I'm having trouble connecting to my brain right now."
 
-# --- SOCKET EVENTS (WEB -> SERVER -> TELEGRAM) ---
+def generate_static_response(emotion):
+    """Returns a gentle, pre-set response based on emotion (fallback/visual reaction)."""
+    responses = {
+        'happy': "It warms my heart to see you smiling!",
+        'sad': "I sense you are feeling down. I am here with you.",
+        'angry': "Take a deep breath. Let's find some calm together.",
+        'neutral': "I am listening.",
+        'fear': "You are safe here. Take your time.",
+        'surprise': "Oh! That looks unexpected."
+    }
+    return responses.get(emotion, "I see you.")
+
+# --- SOCKET EVENTS ---
 
 @socketio.on('video_frame')
 def handle_frame(data_url):
+    """Analyzes facial expressions from the video feed."""
     emotion = analyze_emotion_from_frame(data_url)
     
     if emotion:
-        # 1. Generate Static Audio Response (No AI)
+        # We only trigger a static voice response for strong emotions if no chat is happening
+        # For now, we just update the UI tag, and optionally speak if you want strict parity with the old version
+        # To avoid spamming audio, we send the emotion to the client, but only send audio for specific triggers if needed.
+        
+        # Here we emit the emotion so the badge updates
+        emit('ai_response', {'emotion': emotion, 'audio_url': None}) 
+        
+        # NOTE: If you want Kai to speak on *every* emotion detection like before, uncomment below:
         response_text = generate_static_response(emotion)
         audio_url = generate_tts_audio(response_text)
-        
-        # 2. Emit to Web Client
         emit('ai_response', {'emotion': emotion, 'audio_url': audio_url})
 
 @socketio.on('chat_message')
 def handle_chat(data):
+    """Handles text chat using Gemini AI."""
     user_msg = data.get('message', '')
     if user_msg.strip():
         print(f"User says: {user_msg}")
         
-        # 1. Send user's message to Telegram
-        send_telegram_message(f"👤 Web User: {user_msg}")
+        # 1. Get AI Text Response
+        ai_reply = get_ai_response(user_msg)
         
-        # We do NOT emit a response here. 
-        # We wait for the Telegram Webhook to send the reply.
+        # 2. Convert to Audio
+        audio_url = generate_tts_audio(ai_reply)
+        
+        # 3. Send Text to Chat Window
+        emit('chat_response', {'response': ai_reply})
+        
+        # 4. Send Audio/Animation to Avatar
+        # We set emotion to 'neutral' for general chat, or you could ask Gemini to predict the emotion.
+        emit('ai_response', {'emotion': 'neutral', 'audio_url': audio_url})
 
 if __name__ == '__main__':
-    print("Starting Kai Server (Telegram Bridge Mode)...")
-    print("Ensure you have updated your Webhook URL!")
+    print("Starting Kai Server (Gemini AI Integrated)...")
     socketio.run(app, debug=True, port=5000)
