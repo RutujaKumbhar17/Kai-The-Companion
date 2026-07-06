@@ -33,6 +33,12 @@
                 allow="camera; microphone; autoplay; display-capture; encrypted-media;"
             ></iframe>
         </div>
+
+        <!-- Hidden Capture Elements for Local Emotion AI -->
+        <div class="fixed opacity-0 pointer-events-none overflow-hidden h-0 w-0">
+            <video id="local-video" autoplay muted></video>
+            <canvas id="local-canvas"></canvas>
+        </div>
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/client.js') }}"></script>

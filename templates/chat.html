@@ -66,6 +66,12 @@
         </div>
     </footer>
 
+    <!-- Hidden Capture Elements for Local Emotion AI -->
+    <div class="fixed opacity-0 pointer-events-none overflow-hidden h-0 w-0">
+        <video id="local-video" autoplay muted></video>
+        <canvas id="local-canvas"></canvas>
+    </div>
+
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
     <script>
         // Override the chat message creation to use our new styles

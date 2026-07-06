@@ -4,6 +4,37 @@ const socket = io();
 const chatMessages = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 const btnSend = document.getElementById('send-btn');
+const video = document.getElementById('local-video');
+const canvas = document.getElementById('local-canvas');
+const context = canvas.getContext('2d');
+
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 320, height: 240 }, 
+            audio: false 
+        });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            console.log("Chat Camera active.");
+            setInterval(captureFrame, 2000); // Every 2 seconds for chat
+        };
+    } catch (err) {
+        console.error("Chat Camera Access Error:", err);
+    }
+}
+
+function captureFrame() {
+    if (!video || !canvas || video.videoWidth === 0) return;
+    canvas.width = 300;
+    canvas.height = (video.videoHeight / video.videoWidth) * 300;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.5); 
+    socket.emit('video_frame', dataUrl);
+}
+
+window.addEventListener('load', startCamera);
 
 function appendMessage(text, sender) {
     const msgWrapper = document.createElement('div');
