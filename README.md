@@ -7,6 +7,7 @@
 
 KAI is more than just a chatbot; it is a **multimodal emotional companion** designed to bridge the gap between human sentiment and artificial intelligence. Built with a focus on empathy, aesthetics, and mental well-being, KAI leverages computer vision and advanced language models to provide a sanctuary for self-reflection and connection.
 
+- 🌐 [Live Demo](https://huggingface.co/spaces/rutujakumbhar/KAI-The-Companion)
 ---
 
 ## 🏗️ System Architecture
@@ -211,6 +212,8 @@ This repository is fully optimized for containerized deployment as a **Hugging F
 - [ ] **Wearable Integration**: Syncing heart rate data (e.g., Apple Watch) for deeper anxiety detection.
 - [ ] **VR Sanctuary**: A fully immersive 3D environment for meditation alongside KAI.
 - [ ] **Global Mood map**: Anonymous, aggregated mood trends to visualize collective well-being.
+
+
 
 # Author
  ## 📧 Connect with Me
