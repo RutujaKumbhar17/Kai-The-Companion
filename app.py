@@ -1,4 +1,5 @@
 from flask import Flask, render_template, url_for, request, redirect, send_from_directory
+
 from flask_socketio import SocketIO, emit
 from camera_utils import analyze_emotion_from_frame, LOG_FILE, BASE_DIR
 try:
