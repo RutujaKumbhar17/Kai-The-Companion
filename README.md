@@ -1,13 +1,3 @@
----
-title: KAI-The-Companion
-emoji: 🌌
-colorFrom: yellow
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # 🌌 KAI: The Companion
 ### *Your Soulful AI Reflection and Emotional Sanctuary*
 
