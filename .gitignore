@@ -1,6 +1,5 @@
 # Ignore local config with API keys
-config.py
-
+# (No longer ignoring config.py as it is securely loaded via environment variables)
 
 # Python cache and compiled files
 __pycache__/
@@ -22,3 +21,7 @@ captured_frames
 model_cache
 
 users.json
+logs/
+*.db
+*.csv
+*.json

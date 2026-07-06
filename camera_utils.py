@@ -68,8 +68,37 @@ def load_model():
 # Load the model immediately
 load_model()
 
-# Load Face Detector
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# Load Face Detector (Robust offline-first loading with multiple fallbacks)
+face_cascade = None
+cascade_name = 'haarcascade_frontalface_default.xml'
+local_cascade_path = os.path.join(BASE_DIR, cascade_name)
+
+print("DEBUG cv2 path:", getattr(cv2, "__file__", "unknown"))
+print("Attempting to load face cascade classifier...")
+
+try:
+    if os.path.exists(local_cascade_path):
+        print(f"Loading cascade from local path: {local_cascade_path}")
+        face_cascade = cv2.CascadeClassifier(local_cascade_path)
+    
+    if face_cascade is None or face_cascade.empty():
+        # Fallback to cv2.data.haarcascades if available
+        if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades'):
+            fallback_path = os.path.join(cv2.data.haarcascades, cascade_name)
+            print(f"Local cascade failed/empty. Trying cv2.data fallback: {fallback_path}")
+            face_cascade = cv2.CascadeClassifier(fallback_path)
+            
+    if face_cascade is None or face_cascade.empty():
+        # Last resort: try just passing the filename
+        print("Fallback to raw filename loading...")
+        face_cascade = cv2.CascadeClassifier(cascade_name)
+        
+    if face_cascade is None or face_cascade.empty():
+        print("WARNING: Face cascade classifier could not be loaded. Face detection will be disabled.")
+    else:
+        print("Face cascade classifier loaded successfully.")
+except Exception as e:
+    print(f"ERROR: Exception occurred while loading face cascade classifier: {e}")
 
 # State
 last_capture_time = 0
@@ -87,11 +116,11 @@ EMOTION_MAPPING = {
 def is_proper_frame(face_box, frame_shape):
     x, y, w, h = face_box
     height, width, _ = frame_shape
-    if w < width * 0.15: return False
+    if w < width * 0.10: return False  # Relaxed from 0.15
     face_center_x = x + w / 2
     face_center_y = y + h / 2
-    margin_x = width * 0.20 
-    margin_y = height * 0.20 
+    margin_x = width * 0.15  # Relaxed from 0.20
+    margin_y = height * 0.15 # Relaxed from 0.20
     if (face_center_x < margin_x or face_center_x > (width - margin_x)): return False
     if (face_center_y < margin_y or face_center_y > (height - margin_y)): return False
     return True
@@ -122,7 +151,7 @@ def log_emotion(emotion, score):
 def analyze_emotion_from_frame(data_url):
     global last_capture_time
 
-    if not emotion_classifier:
+    if not emotion_classifier or face_cascade is None:
         return None
 
     try:
@@ -137,15 +166,29 @@ def analyze_emotion_from_frame(data_url):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-        if len(faces) == 0:
-            return None 
+        current_time = time.time()
+        is_capture_ready = (current_time - last_capture_time >= 2.0)
 
+        if len(faces) == 0:
+            if is_capture_ready:
+                # Save Full Frame as placeholder if no face detected
+                timestamp = int(current_time * 1000)
+                filename = os.path.join(CAPTURES_DIR, f"face_{timestamp}_searching.jpg")
+                cv2.imwrite(filename, frame) 
+                log_emotion("searching", 0.0)
+                maintain_photo_buffer()
+                last_capture_time = current_time
+            return None
+
+        # Face(s) Found
         (x, y, w, h) = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
         face_roi = frame[y:y+h, x:x+w]
         
         if is_proper_frame((x, y, w, h), frame.shape):
+            # RGB conversion and resizing for faster model inference
             rgb_face = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(rgb_face)
+            pil_image = Image.fromarray(rgb_face).resize((224, 224)) # standard ViT size for speed
+            
             results = emotion_classifier(pil_image)
             
             if results:
@@ -155,17 +198,23 @@ def analyze_emotion_from_frame(data_url):
 
                 log_emotion(final_emotion, confidence)
 
-                # 2-second interval logic
-                current_time = time.time()
-                if current_time - last_capture_time >= 2.0:
+                if is_capture_ready:
                     timestamp = int(current_time * 1000)
                     filename = os.path.join(CAPTURES_DIR, f"face_{timestamp}_{final_emotion}.jpg")
                     cv2.imwrite(filename, face_roi)
-                    # This ensures only 50 photos are kept
                     maintain_photo_buffer()
                     last_capture_time = current_time
 
                 return {'emotion': final_emotion, 'score': confidence}
+
+        elif is_capture_ready:
+            # Face found but not "proper" (too small or off-center)
+            timestamp = int(current_time * 1000)
+            filename = os.path.join(CAPTURES_DIR, f"face_{timestamp}_uncentered.jpg")
+            cv2.imwrite(filename, frame)
+            log_emotion("uncentered", 0.0)
+            maintain_photo_buffer()
+            last_capture_time = current_time
 
         return None
         

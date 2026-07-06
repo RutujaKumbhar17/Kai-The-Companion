@@ -1,3 +1,13 @@
+---
+title: KAI-The-Companion
+emoji: 🌌
+colorFrom: yellow
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🌌 KAI: The Companion
 ### *Your Soulful AI Reflection and Emotional Sanctuary*
 
@@ -183,17 +193,46 @@ python app.py
 
 ---
 
+## ☁️ Deployment (Hugging Face Spaces)
+
+This repository is fully optimized for containerized deployment as a **Hugging Face Space** using the Docker SDK.
+
+### Deployment Highlights
+- **Base Environment**: Standardized on the full `python:3.10` Debian Bookworm image, ensuring all underlying system binaries are present.
+- **OpenGL and rendering pipelines**: Automatically packages `libgl1`, `libglx-mesa0`, and `libglib2.0-0` to satisfy OpenCV C++ headless execution requirements.
+- **Resilient Vision Loading**: Pre-packages the `haarcascade_frontalface_default.xml` classifier in the project root to guarantee offline face detection loading in container filesystems.
+- **Real-time Diagnostics**: Includes a built-in `/diagnose` endpoint to query package paths, virtual environment isolation, and error tracebacks dynamically in the running container.
+
+### Deploying your own Sanctuary Space
+1. Create a new Space on Hugging Face and choose **Docker** as the SDK.
+2. Link your local repository to the Hugging Face remote:
+   ```bash
+   git remote add hf https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
+   ```
+3. Push your main branch:
+   ```bash
+   git push hf main
+   ```
+
+---
+
 ## 🔮 Future Enhancements
 - [ ] **Multi-User Profiles**: Personalized emotional memory for different family members.
 - [ ] **Wearable Integration**: Syncing heart rate data (e.g., Apple Watch) for deeper anxiety detection.
 - [ ] **VR Sanctuary**: A fully immersive 3D environment for meditation alongside KAI.
 - [ ] **Global Mood map**: Anonymous, aggregated mood trends to visualize collective well-being.
 
----
+# Author
+ ## 📧 Connect with Me
+**Rutuja Maruti Kumbhar**
 
-## 🔗 Connect With Us
-- **Project Link**: [https://github.com/RutujaKumbhar17/KAI-The-Companion](https://github.com/RutujaKumbhar17/KAI-The-Companion)
-- **Author**: Rutuja Kumbhar
+- 🌐 [My Portfolio](https://rutujakumbhar.netlify.app)
+
+- 💼 [My LinkedIn](https://www.linkedin.com/in/rutuja-kumbhar-a7311b2a9/)
+
+- 💻 [My GitHub](https://github.com/RutujaKumbhar17)
+
+- 📧 [Email Id](https://rutujakumbhar.prof@gmail.com)
 
 ---
 *Made with ❤️ and ☕ to bring peace into the digital age.*

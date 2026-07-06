@@ -1,14 +1,20 @@
 from flask import Flask, render_template, url_for, request, redirect, send_from_directory
 from flask_socketio import SocketIO, emit
 from camera_utils import analyze_emotion_from_frame, LOG_FILE, BASE_DIR
-import pyttsx3 
+try:
+    import pyttsx3 
+except Exception:
+    pyttsx3 = None
 import os 
 import time
 import glob 
 import csv
 import json
-from google import genai
-from config import apikey, model_name
+try:
+    from google import genai
+except ImportError:
+    genai = None
+from config import apikey, model_name, groq_api_key, groq_model
 import webbrowser
 import sqlite3
 from collections import deque
@@ -41,12 +47,51 @@ app.config['SECRET_KEY'] = 'kai_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- OpenRouter (KAI) Config ---
-OPENROUTER_API_KEY = ""
-OPENROUTER_MODEL = "openai/gpt-3.5-turbo"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-3.5-turbo")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# (Gemini Client left for reference, but logic is replaced)
-client = genai.Client(api_key=apikey)
+# (Gemini Client initialization)
+# --- Groq Configuration ---
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", groq_api_key)
+GROQ_MODEL = os.environ.get("GROQ_MODEL", groq_model)
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+def get_groq_response(messages, response_format=None):
+    """Call Groq API to get a chat completion"""
+    if not GROQ_API_KEY:
+        return None
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": GROQ_MODEL,
+        "messages": messages
+    }
+    if response_format:
+        data["response_format"] = response_format
+
+    try:
+        response = requests.post(GROQ_URL, headers=headers, json=data, timeout=10)
+        res_json = response.json()
+        if 'choices' in res_json:
+            return res_json['choices'][0]['message']['content'].strip()
+        print(f"Groq API Error: {res_json}")
+        return None
+    except Exception as e:
+        print(f"Groq Request Error: {e}")
+        return None
+
+# (Gemini Client initialization)
+client = None
+if genai and apikey and apikey.startswith("AIza"):
+    try:
+        client = genai.Client(api_key=apikey)
+    except Exception as e:
+        print(f"Error initializing Gemini client: {e}")
+else:
+    print("Using OpenRouter / Groq as the primary AI engine.")
 
 # ... (Keep existing Safety Settings & System Instructions unchanged) ...
 safety_settings = [
@@ -84,6 +129,48 @@ if not os.path.exists(AUDIO_DIR):
     os.makedirs(AUDIO_DIR)
 
 # --- ROUTES ---
+
+@app.route('/diagnose')
+def diagnose():
+    import sys
+    import os
+    import json
+    
+    cv2_status = "Not imported"
+    cv2_file = "N/A"
+    cv2_version = "N/A"
+    cv2_attributes = []
+    import_error = None
+    import_error_tb = None
+    
+    try:
+        import cv2
+        cv2_status = "Imported successfully"
+        cv2_file = getattr(cv2, "__file__", "unknown")
+        cv2_version = getattr(cv2, "__version__", "unknown")
+        cv2_attributes = [x for x in dir(cv2) if not x.startswith("_")]
+    except Exception as e:
+        cv2_status = "Import failed"
+        import_error = str(e)
+        import traceback
+        import_error_tb = traceback.format_exc()
+        
+    files_in_app = os.listdir(BASE_DIR)
+    
+    diagnostic_info = {
+        "python_version": sys.version,
+        "sys_path": sys.path,
+        "cv2_status": cv2_status,
+        "cv2_file": cv2_file,
+        "cv2_version": cv2_version,
+        "import_error": import_error,
+        "import_error_traceback": import_error_tb,
+        "has_CascadeClassifier": hasattr(cv2, 'CascadeClassifier') if cv2_status == "Imported successfully" else False,
+        "files_in_app": files_in_app,
+        "cv2_attributes_tail": cv2_attributes[-50:] if len(cv2_attributes) > 50 else cv2_attributes
+    }
+    
+    return json.dumps(diagnostic_info, indent=4), 200, {'Content-Type': 'application/json'}
 
 @app.route('/')
 def landing():
@@ -251,20 +338,27 @@ def dashboard_data():
                     "url": url_for('static', filename=f'joy_gallery/{os.path.basename(img)}')
                 })
     
-    # 5. Real Happy Captures (Faceography)
+    # 5. Real-Time Captured Frames (Faceography / Live Window)
     CAPTURES_DIR = os.path.join(BASE_DIR, 'captured_frames')
     if os.path.exists(CAPTURES_DIR):
-        # Find all files with "happy" in the name
-        happy_files = glob.glob(os.path.join(CAPTURES_DIR, "*happy*"))
+        # Find all captured files
+        all_captures = glob.glob(os.path.join(CAPTURES_DIR, "face_*.jpg"))
         # Sort by most recent
-        happy_files.sort(key=os.path.getmtime, reverse=True)
-        for img_path in happy_files[:10]: # Limit to 10
+        all_captures.sort(key=os.path.getmtime, reverse=True)
+        for img_path in all_captures[:20]: # Limit to 20 most recent
             filename = os.path.basename(img_path)
-            # Use our new /captures/ route
+            # Identify mood from filename
+            display_mood = "Live"
+            for mood in ['happy', 'sad', 'angry', 'neutral', 'searching', 'uncentered']:
+                if mood in filename:
+                    display_mood = mood.capitalize()
+                    break
+                    
             data["glow_gallery"].append({
                 "type": "capture",
                 "url": f"/captures/{filename}",
-                "date": time.strftime("%b %d", time.localtime(os.path.getmtime(img_path)))
+                "date": time.strftime("%H:%M", time.localtime(os.path.getmtime(img_path))),
+                "mood": display_mood
             })
 
     # 6. Fallback/Inspiration Gallery (if empty)
@@ -325,12 +419,45 @@ def dashboard_data():
             f"Avoid clichés. Use evocative language (e.g., 'sip the silence', 'trace the grain of the day'). "
             f"Keep each under 10 words. Return ONLY a JSON list of strings."
         )
-        response = client.models.generate_content(
-            model=model_name,
-            contents=suggestion_prompt,
-            config={'response_mime_type': 'application/json'}
-        )
-        data["activity_suggestions"] = json.loads(response.text)
+        
+        if GROQ_API_KEY:
+            # Use Groq for suggestions
+            messages = [
+                {"role": "system", "content": "You are a poetic mindfulness guide. Return ONLY a JSON list of 3 strings."},
+                {"role": "user", "content": suggestion_prompt}
+            ]
+            response_text = get_groq_response(messages, response_format={"type": "json_object"})
+            if response_text:
+                try:
+                    data["activity_suggestions"] = json.loads(response_text)
+                except Exception as parse_err:
+                    print(f"Error parsing Groq suggestions: {parse_err}")
+        elif client:
+            # Use Gemini if key is valid (legacy)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=suggestion_prompt,
+                config={'response_mime_type': 'application/json'}
+            )
+            data["activity_suggestions"] = json.loads(response.text)
+        else:
+            # Fallback to OpenRouter
+            messages = [
+                {"role": "system", "content": "You are a poetic mindfulness guide. Return ONLY a JSON list of 3 strings."},
+                {"role": "user", "content": suggestion_prompt}
+            ]
+            response_text = get_kai_response(messages)
+            # Try to parse as JSON if possible, otherwise split by lines/bullets
+            try:
+                data["activity_suggestions"] = json.loads(response_text)
+            except:
+                # Basic parsing fallbacks
+                import re
+                suggestions = re.findall(r'"([^"]*)"', response_text)
+                if len(suggestions) >= 3:
+                     data["activity_suggestions"] = suggestions[:3]
+                else:
+                     data["activity_suggestions"] = [s.strip('- ').strip() for s in response_text.split('\n') if s.strip()][:3]
     except Exception as e:
         print(f"Error generating AI suggestions: {e}")
         # Fallback
@@ -344,7 +471,15 @@ def dashboard_data():
     return json.dumps(data)
 
 def get_kai_response(messages):
-    """Call OpenRouter API to get a response from Kai"""
+    """Call Groq or OpenRouter API to get a response from Kai"""
+    if GROQ_API_KEY:
+        print(f"[GROQ] Sending chat request using model {GROQ_MODEL}")
+        reply = get_groq_response(messages)
+        if reply:
+            return reply
+        print("[GROQ] Failed, falling back to OpenRouter...")
+        
+    # Fallback to OpenRouter
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
@@ -487,17 +622,32 @@ def cleanup_audio_folder():
 
 def generate_tts_audio(text):
     cleanup_audio_folder()
-    filename = f"response_{int(time.time())}.wav"
-    audio_path = os.path.join(AUDIO_DIR, filename)
+    
+    # Try using gTTS first since it sounds much better and works out-of-the-box on headless Linux
     try:
-        engine = pyttsx3.init()
-        engine.setProperty('rate', 175) 
-        engine.save_to_file(text, audio_path)
-        engine.runAndWait()
+        from gtts import gTTS
+        filename = f"response_{int(time.time())}.mp3"
+        audio_path = os.path.join(AUDIO_DIR, filename)
+        tts = gTTS(text=text, lang='en')
+        tts.save(audio_path)
         return url_for('static', filename=f'audio/{filename}')
     except Exception as e:
-        print(f"TTS Error: {e}")
-        return None
+        print(f"gTTS Error: {e}. Falling back to pyttsx3...")
+        # Fallback to pyttsx3
+        if pyttsx3 is None:
+            print("pyttsx3 is not available.")
+            return None
+        try:
+            filename = f"response_{int(time.time())}.wav"
+            audio_path = os.path.join(AUDIO_DIR, filename)
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 175) 
+            engine.save_to_file(text, audio_path)
+            engine.runAndWait()
+            return url_for('static', filename=f'audio/{filename}')
+        except Exception as pytts_err:
+            print(f"pyttsx3 Error: {pytts_err}")
+            return None
 
 def process_browser_command(text):
     lower_text = text.lower()
@@ -605,6 +755,8 @@ def handle_disconnect():
 @socketio.on('video_frame')
 def handle_frame(data_url):
     sid = request.sid
+    # Only print every 10th frame or so to avoid flooding, or just on success
+    # print(f"[CAMERA] Frame received from {sid}") 
     result = analyze_emotion_from_frame(data_url)
     if result:
         emotion = result['emotion']
@@ -666,4 +818,5 @@ def handle_chat(data):
 
 if __name__ == '__main__':
     print("Starting Kai Server (Optimized & Persistent)...")
-    socketio.run(app, debug=True, port=5002)
+    port = int(os.environ.get("PORT", 5002))
+    socketio.run(app, host='0.0.0.0', debug=True, port=port)

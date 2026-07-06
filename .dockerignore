@@ -1,0 +1,26 @@
+.git
+__pycache__
+captured_frames/*
+logs/*
+model_cache/*
+static/audio/*
+*.db
+*.csv
+.env
+.gitignore
+.agents
+.gemini
+
+# Exclude virtual environments
+epickai
+epickai/**
+venv
+venv/**
+.venv
+.venv/**
+
+# Exclude recursive python cache and compiled objects
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
